@@ -46,7 +46,7 @@ package = 'modab_root_finder'
   "spin.cmds.meson.gdb",
   "spin.cmds.meson.lldb"
 ]
-"Extensions" = [".spin/cmds.py:example", ".spin/cmds.py:build_ext"]
+"Extensions" = [".spin/cmds.py:example", ".spin/cmds.py:build_ext", ".spin/cmds.py:bench"]
 "Pip" = [
   "spin.cmds.pip.install"
 ]
