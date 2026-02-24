@@ -1,0 +1,59 @@
+[project]
+name = "example_pkg"
+version = "0.0dev0"
+requires-python = ">=3.7"
+description = "spin Example Package"
+
+[build-system]
+build-backend = "mesonpy"
+requires = [
+  "meson-python>=0.13.0rc0",
+  "spin",
+  "Cython>=3.2.0",
+]
+
+[tool.spin]
+package = 'example_pkg'
+
+[tool.spin.commands]
+# If you don't need sections, you can also provide a list of commands under [tool.spin]:
+#
+# commands = [
+#   "spin.cmds.meson.build",
+#   "spin.cmds.meson.test",
+#   "spin.cmds.meson.shell",
+#   "spin.cmds.meson.ipython",
+#   "spin.cmds.meson.python",
+#   ".spin/cmds.py:example"
+# ]
+
+"Build" = [
+  "spin.cmds.meson.build",
+  "spin.cmds.meson.test",
+  "spin.cmds.build.sdist",
+  "spin.cmds.build.wheel",
+]
+"Documentation" = [
+  "spin.cmds.meson.docs"
+]
+"Environments" = [
+  "spin.cmds.meson.shell",
+  "spin.cmds.meson.ipython",
+  "spin.cmds.meson.python",
+  "spin.cmds.meson.run"
+]
+"Debug" = [
+  "spin.cmds.meson.gdb",
+  "spin.cmds.meson.lldb"
+]
+"Extensions" = [".spin/cmds.py:example", ".spin/cmds.py:build_ext"]
+"Pip" = [
+  "spin.cmds.pip.install"
+]
+"Meta" = [
+  "spin.cmds.meta.introspect"
+]
+
+[tool.spin.kwargs]
+".spin/cmds.py:example" = {"test" = "default override", "default_kwd" = 3}
+"spin.cmds.meson.ipython" = {"pre_import" = '''import example_pkg as ep; print(f'\nPreimported example_pkg {ep.__version__} as ep')'''}
