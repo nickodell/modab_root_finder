@@ -1,8 +1,8 @@
 [project]
-name = "example_pkg"
+name = "modab-root-finder"
 version = "0.0dev0"
 requires-python = ">=3.7"
-description = "spin Example Package"
+description = "spin modab-root-finder"
 
 [build-system]
 build-backend = "mesonpy"
@@ -13,7 +13,7 @@ requires = [
 ]
 
 [tool.spin]
-package = 'example_pkg'
+package = 'modab_root_finder'
 
 [tool.spin.commands]
 # If you don't need sections, you can also provide a list of commands under [tool.spin]:
@@ -56,4 +56,4 @@ package = 'example_pkg'
 
 [tool.spin.kwargs]
 ".spin/cmds.py:example" = {"test" = "default override", "default_kwd" = 3}
-"spin.cmds.meson.ipython" = {"pre_import" = '''import example_pkg as ep; print(f'\nPreimported example_pkg {ep.__version__} as ep')'''}
+"spin.cmds.meson.ipython" = {"pre_import" = '''import modab_root_finder as ep; print(f'\nPreimported modab_root_finder {ep.__version__} as ep')'''}

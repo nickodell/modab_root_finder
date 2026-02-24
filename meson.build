@@ -1,5 +1,5 @@
 project(
-  'spin-example-pkg',
+  'spin-modab-root-finder',
   'c', 'cython',
   version: '0.0.dev0',
   license: 'BSD-3',
@@ -19,12 +19,12 @@ py_dep = py.dependency()
 
 py.extension_module(
     'rect',
-    'example_pkg/rect.pyx',
+    'modab_root_finder/rect.pyx',
     dependencies: py_dep,
     override_options : ['cython_language=cpp'],
     install: true,
     include_directories: [],
-    subdir: 'example_pkg',
+    subdir: 'modab_root_finder',
 )
 
-subdir('example_pkg')
+subdir('modab_root_finder')

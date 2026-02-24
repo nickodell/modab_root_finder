@@ -1,4 +1,4 @@
-from example_pkg import echo
+from modab_root_finder import echo
 
 
 def test_core():
