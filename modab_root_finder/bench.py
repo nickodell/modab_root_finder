@@ -2,19 +2,29 @@
 # Copyright Ned Ganchovski
 # License: MIT License
 
+import argparse
 import math
-# from ModAB import mod_ab
-from modab_root_finder import modab_from_paper
 from dataclasses import dataclass
-from typing import Callable 
+from typing import Callable
+
 import numpy as np
-from scipy.optimize import bisect as sp_bisect, brentq, brenth, ridder as sp_ridder, elementwise
+import pandas as pd
+from scipy.optimize import bisect as sp_bisect
+from scipy.optimize import brenth, brentq, elementwise
+from scipy.optimize import ridder as sp_ridder
+import matplotlib.pyplot as plt
+
+from modab_root_finder import (
+    modab_from_paper,
+    modab_from_proektsoftbg,
+    mpmath_root,
+)
 
 
 def mod_ab(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
     #return modab_from_paper(g, left, right, precision)
-    return modab_from_proekt(g, left, right, precision)
+    return modab_from_proektsoftbg(g, left, right, precision)
 
 
 # Function-call counting wrapper
@@ -127,6 +137,7 @@ problems1 = [
     Problem("f37", lambda x: (x - 7 / 9)**3 + (x - 7 / 9) * 1e-3, -11, 9),
     Problem("f38", lambda x: -0.5 if x <= 1 / 3 else 0.5, -11, 9),
     Problem("f39", lambda x: -1e-3 if x <= 1 / 3 else 1 - 1e-3, -11, 9),
+    # Note: discontinuous root
     Problem("f40", lambda x: 0 if x == 0 else 1 / (x - 2 / 3), -11, 9),
     # A. Swift and G.R. Lindfield. Comparison of a Continuation Method with Brents Method for the Numerical Solution of a Single Nonlinear Equation
     Problem("f41", lambda x: 2 * x * math.exp(-5) - 2 * math.exp(-5 * x) + 1, 0, 10),
@@ -169,6 +180,7 @@ problems2 = [
     Problem("f74", lambda x: (x - 1 / 3)**2 * math.atan(x - 1 / 3), -1, 1),
     Problem("f75", lambda x: (1 if 3 * x - 1 > 0 else (-1 if 3 * x - 1 < 0 else 0)) * (1 - math.sqrt(1 - (3 * x - 1)**2 / 81)), -1, 1),
     Problem("f76", lambda x: (1 + 1e6) / 1e6 if x > (1 - 1e6) / 1e6 else -1, -1, 1),
+    # Note: has no root
     Problem("f77", lambda x: 1 / (21 * x - 1) if x != 1 / 21 else 0, -1, 1),
     Problem("f78", lambda x: x * x / 4 + math.ceil(x / 2) - 0.5, -1, 1),
     Problem("f79", lambda x: math.ceil(10 * x - 1) + 0.5, -1, 1),
@@ -191,6 +203,8 @@ problems3 = [
 
 all_problems = problems1 + problems2 + problems3
 
+problem_lookup = {p.name: p for p in all_problems}
+
 # Solver table
 solvers = [
     ("bisect", scipy_bisect),
@@ -201,13 +215,47 @@ solvers = [
     (" modAB", mod_ab),
 ]
 
+
+def get_true_answer(p):
+    assert p.value == 0
+    known_answer = mpmath_root(p)
+    return known_answer
+
+
+def visualize_true_answers(true_answers):
+    df_rows = []
+    for problem_name, answer in true_answers.items():
+        problem = problem_lookup[problem_name]
+        digits_right = int(-math.log10(max(abs(problem.f(answer.root)), 1e-15)))
+        df_rows.append({
+            'name': problem_name,
+            'root': answer.root,
+            'f(x)': problem.f(answer.root),
+            'digits': digits_right,
+            'wb': answer.well_behaved,
+            'source': answer.root_source,
+        })
+    df = pd.DataFrame(df_rows)
+    print(df.to_string())
+    breakpoint()
+    print("done")
+
 # Benchmark runner
-def run():
+def bench(args):
+    true_answers = {}
+    for p in all_problems:
+        # if p.name != 'f91':
+        #     continue
+        true_answers[p.name] = get_true_answer(p)
+    # visualize_true_answers(true_answers)
+    # exit()
+
+
     eps = 1e-14
     col_w = 22  # column width for results
 
     # Results
-    print("Results")
+    print("Roots found")
     header = f"{'Func':>4}; " + "; ".join(f"{name:>{col_w}}" for name, _ in solvers)
     print(header)
     for p in all_problems:
@@ -218,12 +266,14 @@ def run():
                 result = solver(cf, p.a, p.b, p.value, eps)
                 line += f"{result:>{col_w}.15g}; "
             except Exception:
+                if args.no_error_supression:
+                    raise
                 line += f"{'ERR':>{col_w}}; "
         print(line)
     print()
 
     # Function values
-    print("Function values")
+    print("Root difference")
     header = f"{'Func':>4}; " + "; ".join(f"{name:>{col_w}}" for name, _ in solvers)
     print(header)
     for p in all_problems:
@@ -232,8 +282,11 @@ def run():
             cf = CountedFunc(p.f)
             try:
                 result = solver(cf, p.a, p.b, p.value, eps)
-                line += f"{cf(result):>{col_w}.15g}; "
+                accuracy = abs(true_answers[p.name].root - result)
+                line += f"{accuracy:>{col_w}.15g}; "
             except Exception:
+                if args.no_error_supression:
+                    raise
                 line += f"{'ERR':>{col_w}}; "
         print(line)
     print()
@@ -252,6 +305,8 @@ def run():
                 total[j] += cf.count
                 line += f"{cf.count:>6}; "
             except Exception:
+                if args.no_error_supression:
+                    raise
                 line += f"{'ERR':>6}; "
         print(line)
 
@@ -262,6 +317,87 @@ def run():
     print(line)
     print()
 
+def funcviz(args):
+    func_name = args.func
+    if func_name is None:
+        raise Exception("--func is mandatory")
+    if args.func_x is None:
+        raise Exception("--func-x is mandatory")
+    for p in all_problems:
+        if p.name == func_name:
+            func = p.f
+            break
+    else:
+        raise Exception(f"can't find func {func_name}")
+    if args.func_x == 0:
+        if args.func_size is None:
+            start_x = -1e-10
+            end_x = 1e-10
+        else:
+            start_x = -args.func_size
+            end_x = args.func_size
+    else:
+        if args.func_size is None:
+            size = args.func_x * 0.01
+        else:
+            size = args.func_size
+        start_x = args.func_x - size / 2
+        end_x = args.func_x + size / 2
+    x = np.linspace(start_x, end_x, 101)
+    x = np.append(x, args.func_x)
+    x.sort()
+    y = np.array([func(float(xval)) for xval in x])
+    plt.plot(x, y)
+    plt.title(f"plot for {func_name}")
+    plt.show()
+
+
+def main(args):
+    if args.mode == "bench":
+        bench(args)
+    elif args.mode == "funcviz":
+        funcviz(args)
+    else:
+        raise Exception("unknown --mode")
+
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="ModAB benchmark program"
+    )
+    parser.add_argument(
+        "-s",
+        "--no-error-supression",
+        action="store_true"
+    )
+
+    parser.add_argument(
+        "--mode",
+        default="bench",
+    )
+
+    parser.add_argument(
+        "--func",
+        help="for funcviz, what function to visualize?"
+    )
+
+    parser.add_argument(
+        "--func-x",
+        type=float,
+        help="for funcviz, what x to visualize?"
+    )
+
+    parser.add_argument(
+        "--func-size",
+        type=float,
+        help="for funcviz, what scale to visualize x on?"
+    )
+
+    args = parser.parse_args()
+    return args
+
 
 if __name__ == "__main__":
-    run()
+    args = parse_args()
+    main(args)

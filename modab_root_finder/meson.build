@@ -7,7 +7,9 @@ py.extension_module(
 
 python_sources = [
   '__init__.py',
-  'conftest.py'
+  'conftest.py',
+  'modab_from_proektsoftbg_encoded.py',
+  'mpmath_root.py',
 ]
 
 py.install_sources(

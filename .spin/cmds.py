@@ -45,10 +45,12 @@ def example(flag, test, default_kwd=None):
 
 
 @click.command()
+@click.argument("bench_args", nargs=-1)
+@click.option("-s", "--no-error-supression", help="Extra test flag", is_flag=True)
 @build_option
 @build_dir_option
 @click.pass_context
-def bench(ctx, *, build=None, build_dir=None):
+def bench(ctx, *, build=None, no_error_supression=None, build_dir=None, bench_args=None):
     """Run benchmarks in the build-install environment
 
     Builds the project and runs modab_root_finder/bench.py.
@@ -64,8 +66,13 @@ def bench(ctx, *, build=None, build_dir=None):
             )
             ctx.invoke(build_cmd, build_dir=build_dir)
 
+    args = []
+    if no_error_supression:
+        args += ['--no-error-supression']
+    args += bench_args
+
     _set_pythonpath(build_dir)
-    _run([sys.executable, "-P", "modab_root_finder/bench.py"])
+    _run([sys.executable, "-P", "modab_root_finder/bench.py", *args])
 
 
 @click.option("-e", "--extra", help="Extra test flag", type=int)
