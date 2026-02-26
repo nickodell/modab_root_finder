@@ -4,6 +4,12 @@ version = "0.0dev0"
 requires-python = ">=3.7"
 description = "spin modab-root-finder"
 
+
+dependencies = [
+  "numpy>=2.0.0",
+  "scipy",
+]
+
 [build-system]
 build-backend = "mesonpy"
 requires = [

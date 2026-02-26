@@ -1,5 +1,7 @@
 // ModAB, from the original paper.
-// Copyright ???
+// Copyright N Ganchovski and A Traykov 2023
+// Creative Commons Attribution 3.0 licence.
+// https://iopscience.iop.org/article/10.1088/1757-899X/1276/1/012010
 
 
 internal static double? ModAB(Func F, double x1, double x2, double eps)
