@@ -5,6 +5,24 @@ py.extension_module(
   subdir: 'modab_root_finder'
 )
 
+py.extension_module(
+    'rect',
+    'rect.pyx',
+    dependencies: py_dep,
+    override_options : ['cython_language=cpp'],
+    install: true,
+    include_directories: [],
+)
+
+py.extension_module(
+    'modab_from_paper',
+    'modab_from_paper.pyx',
+    dependencies: py_dep,
+    override_options : ['cython_language=cpp'],
+    install: true,
+    include_directories: [],
+)
+
 python_sources = [
   '__init__.py',
   'conftest.py',
