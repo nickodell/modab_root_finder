@@ -9,10 +9,10 @@ import math
 debug = bool(int(os.environ.get('MODAB_MOD_DEBUG', '0')))
 
 
-cdef sign(x):
+cdef double sign(double x):
     # TODO: C# Math.Sign actually can return -1, 0, or 1.
     # Do we want to deal with sign = 0?
-    return -1 if x < 0 else 1
+    return -1.0 if x < 0.0 else 1.0
 
 
 @cython.final
@@ -39,7 +39,7 @@ cdef double secant(Node p1, Node p2):
     return (p1.x * p2.y - p1.y * p2.x) / (p2.y - p1.y)
 
 
-cdef initialize(F, x1, x2, eps_f):
+cdef tuple initialize(F, double x1, double x2, double eps_f):
     p1 = Node()
     p1.x = x1
     p1.y = F(x1)
@@ -71,7 +71,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
         x1, x2 = x2, x1
     p1, p2, eps = initialize(F, x1, x2, eps_f)
     # Are we bisecting right now?
-    cdef bool bisection = True
+    cdef bint bisection = True
     # What side moved last in AB step?
     cdef int side = 0
     # How long should we try AB before giving up and doing bisection?
