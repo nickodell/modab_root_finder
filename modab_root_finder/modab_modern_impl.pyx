@@ -136,8 +136,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
                 show_point_in_context(p1, p2, p3)
             threshold /= 2.0
 
-        # Note: multiply eps by 0.5 as described in GH issue
-        if p3.y == 0 or abs(p3.x - x0) <= eps.x * 0.5:
+        if p3.y == 0 or abs(p3.x - x0) <= eps.x:
             if debug:
                 print(f"exiting x converged, {p3}")
             return p3.x
