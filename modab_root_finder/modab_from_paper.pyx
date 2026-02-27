@@ -9,7 +9,7 @@ cdef sign(x):
 
 
 @cython.cdivision(True)
-cpdef modab_from_paper(F, x1, x2, eps):
+cpdef mod_ab_from_paper(F, x1, x2, eps):
     cdef float y1, y2, y3
     cdef float x3
     cdef float ym
@@ -32,7 +32,8 @@ cpdef modab_from_paper(F, x1, x2, eps):
             raise NotImplementedError()
         # L24
         print("y3", y3, "y0", F(x0))
-        if y3 == 0 or abs(x3 - x0) <= eps:   # Convergence check
+        # Note: using 2 * eps from GH thread
+        if y3 == 0 or abs(x3 - x0) <= 2 * eps:   # Convergence check
             # TODO: Convergence check is done before we know if
             # x3 / x0 is valid bracket
             # print("exit convergence", eps, x3, x0, )

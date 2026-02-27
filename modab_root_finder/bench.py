@@ -12,6 +12,7 @@ import pandas as pd
 from scipy.optimize import bisect as sp_bisect
 from scipy.optimize import brenth, brentq, elementwise
 from scipy.optimize import ridder as sp_ridder
+from scipy.optimize import toms748 as sp_toms748
 import matplotlib.pyplot as plt
 
 from modab_root_finder import (
@@ -21,10 +22,10 @@ from modab_root_finder import (
 )
 
 
-def mod_ab(f, left, right, target, precision=1e-14):
+def mod_ab_author(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
     #return modab_from_paper(g, left, right, precision)
-    return modab_from_proektsoftbg(g, left, right, precision)
+    return modab_from_proektsoftbg(g, left, right, precision * 0.5)
 
 
 # Function-call counting wrapper
@@ -52,8 +53,10 @@ def make_scipy_solver(scipy_func, name):
         g = (lambda x: f(x) - target) if target != 0 else f
         a, b = min(left, right), max(left, right)
         try:
+            # print("func", scipy_func, "xtol", precision, "rtol", _MIN_RTOL)
             root, info = scipy_func(g, a, b, xtol=precision, rtol=_MIN_RTOL,
-                                    maxiter=100, full_output=True, disp=False)
+                                    maxiter=1000, full_output=True, disp=False)
+            # print(info)
             return root
         except (ValueError, RuntimeError):
             return float('nan')
@@ -63,12 +66,19 @@ def make_scipy_solver(scipy_func, name):
 def wrap_find_root():
     """Create a wrapper for find_root that matches the required signature."""
     def solver(f, left, right, target, precision=1e-14):
+        # print("wrap_find_root 1", f.count)
         g = (np.vectorize((lambda x: f(x) - target), otypes=[np.float64]) 
              if target != 0 else np.vectorize(f, otypes=[np.float64]))
+        # print("wrap_find_root 2", f.count)
+        # g = (lambda x: np.array([f(x.item()) - target]))
         a, b = min(left, right), max(left, right)
+        # print("wrap_find_root 3", f.count)
         try:
             tolerances = dict(xatol=precision, xrtol=0, fatol=0, frtol=0)
+            # print("wrap_find_root 4", f.count)
+            # print(g)
             res = elementwise.find_root(g, (a, b), tolerances=tolerances)
+            # print("wrap_find_root 5", f.count)
             return res.x
         except (ValueError, RuntimeError):
             return float('nan')
@@ -79,6 +89,7 @@ scipy_bisect = make_scipy_solver(sp_bisect, "sp_bisect")
 scipy_brentq = make_scipy_solver(brentq,    "sp_brentq")
 scipy_brenth = make_scipy_solver(brenth,    "sp_brenth")
 scipy_ridder = make_scipy_solver(sp_ridder, "sp_ridder")
+scipy_toms748 = make_scipy_solver(sp_toms748, "sp_toms748")
 scipy_chandrupatla = wrap_find_root()
 
 # Problem definition
@@ -138,13 +149,14 @@ problems1 = [
     Problem("f38", lambda x: -0.5 if x <= 1 / 3 else 0.5, -11, 9),
     Problem("f39", lambda x: -1e-3 if x <= 1 / 3 else 1 - 1e-3, -11, 9),
     # Note: discontinuous root
-    Problem("f40", lambda x: 0 if x == 0 else 1 / (x - 2 / 3), -11, 9),
+    Problem("f40", lambda x: 0 if (x - 2 / 3) == 0 else 1 / (x - 2 / 3), -11, 9),
     # A. Swift and G.R. Lindfield. Comparison of a Continuation Method with Brents Method for the Numerical Solution of a Single Nonlinear Equation
     Problem("f41", lambda x: 2 * x * math.exp(-5) - 2 * math.exp(-5 * x) + 1, 0, 10),
     Problem("f42", lambda x: (x**2 - x - 6) * (x**2 - 3 * x + 2), 0, math.pi),
     Problem("f43", lambda x: x**3, -1, 1.5),
     Problem("f44", lambda x: x**5, -1, 1.5),
     Problem("f45", lambda x: x**7, -1, 1.5),
+    # Problem("f45_rescale", lambda x: x**7*1e5, -1, 1.5),
     Problem("f46", lambda x: (math.exp(-5 * x) - x - 0.5) / x**5, 0.09, 0.7),
     Problem("f47", lambda x: 1 / math.sqrt(x) - 2 * math.log(5e3 * math.sqrt(x)) + 0.8, 0.0005, 0.5),
     Problem("f48", lambda x: 1 / math.sqrt(x) - 2 * math.log(5e7 * math.sqrt(x)) + 0.8, 0.0005, 0.5),
@@ -185,7 +197,7 @@ problems2 = [
     Problem("f78", lambda x: x * x / 4 + math.ceil(x / 2) - 0.5, -1, 1),
     Problem("f79", lambda x: math.ceil(10 * x - 1) + 0.5, -1, 1),
     Problem("f80", lambda x: x + math.sin(x * 1e6) / 10 + 1e-3, -1, 1),
-    Problem("f81", lambda x: 1 + math.sin(1 / (x + 1)) if x > -1 else -1, -1, 1),
+    Problem("f81", lambda x: 1 + math.sin(1 / (x + 1)) - 1e-15 if x > -1 else -1, -1, 1),
     Problem("f82", lambda x: 202 * x - 2 * math.floor((2 * x + 1e-2) / 2e-2) - 0.1, -1, 1),
     Problem("f83", lambda x: (202 * x - 2 * math.floor((2 * x + 1e-2) / 2e-2) - 0.1)**3, -1, 1),
 ]
@@ -212,7 +224,9 @@ solvers = [
     ("brenth", scipy_brenth),
     ("ridder", scipy_ridder),
     ("chandr", scipy_chandrupatla),
-    (" modAB", mod_ab),
+    ("  toms", scipy_toms748),
+    (" modAB", mod_ab_author),
+    # (" paper", mod_ab_from_paper),
 ]
 
 
@@ -222,114 +236,231 @@ def get_true_answer(p):
     return known_answer
 
 
-def visualize_true_answers(true_answers):
+true_answers = {}
+
+
+def init_true_answers():
+    for p in all_problems:
+        true_answers[p.name] = get_true_answer(p)
+
+
+def sign(x):
+    return -1 if x < 0 else 1
+
+
+def find_nearby_root(f, x0):
+    search_area = 1e-10
+    for i in range(10):
+        a = x0 - search_area
+        b = x0 + search_area
+        if sign(f(a)) != sign(f(b)):
+            _, results = sp_bisect(f, a, b, full_output=True, xtol=1e-15)
+            return results
+        search_area *= 2
+    raise Exception()
+
+
+
+def check_solution(f, p, root, eps):
+    true_answer = true_answers[p.name]
+    # Note: some of the benchmark problems have a large area where
+    # f(x) == 0. Add the 'ambiguity radius' to eps to make those
+    # cases more lenient
+    if abs(root - true_answer.root) < eps + true_answer.ambiguity_radius:
+        return
+    if not true_answer.well_behaved:
+        return
+    froot = f(root)
+    if froot <= eps:
+        # This root is small enough
+        return
+
+    results = find_nearby_root(f, root)
+    if results.converged:
+        if f(results.root) < eps:
+            # How different is it from our root?
+            x_err = abs(results.root - root)
+            print(f"solver's root off, {x_err=}, f({root}) = {froot}")
+            if x_err > eps:
+                raise Exception("Found bad solution")
+            else:
+                return
+    else:
+        raise Exception("bisection didn't converge")
+
+
+def termsearch(args):
+    # eps_vals = [1e-14, 1e-12, 1e-10, 1e-8]
+    eps_vals = [1e-8, 1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14]
+    for problem in all_problems:
+        for eps in eps_vals:
+            for solver_name, solver in solvers:
+                print("solver", solver_name, "problem", problem.name, "eps", eps)
+                cf = CountedFunc(problem.f)
+                root = solver(cf, problem.a, problem.b, problem.value, eps)
+                check_solution(problem.f, problem, root, eps)
+
+
+def showsolutions(args):
+    global all_problems
+    if args.func is not None:
+        # filter function list
+        all_problems = [p for p in all_problems if p.name == args.func]
+    init_true_answers()    
     df_rows = []
-    for problem_name, answer in true_answers.items():
-        problem = problem_lookup[problem_name]
+    for problem in all_problems:
+        problem_name = problem.name
+        answer = true_answers[problem_name]
         digits_right = int(-math.log10(max(abs(problem.f(answer.root)), 1e-15)))
         df_rows.append({
             'name': problem_name,
             'root': answer.root,
             'f(x)': problem.f(answer.root),
+            'amb': answer.ambiguity_radius,
             'digits': digits_right,
             'wb': answer.well_behaved,
             'source': answer.root_source,
         })
     df = pd.DataFrame(df_rows)
     print(df.to_string())
-    breakpoint()
     print("done")
+
+
 
 # Benchmark runner
 def bench(args):
-    true_answers = {}
-    for p in all_problems:
-        # if p.name != 'f91':
-        #     continue
-        true_answers[p.name] = get_true_answer(p)
-    # visualize_true_answers(true_answers)
-    # exit()
+    global all_problems
+    if args.func is not None:
+        # filter function list
+        all_problems = [p for p in all_problems if p.name == args.func]
 
+    sections = args.sections.split(",")
 
-    eps = 1e-14
+    enable_roots = False
+    enable_acc = False
+    enable_nfev = False
+    enable_fval = False
+
+    if "roots" in sections:
+        enable_roots = True
+    if "acc" in sections:
+        enable_acc = True
+    if "nfev" in sections:
+        enable_nfev = True
+    if "fval" in sections:
+        enable_fval = True
+
+    eps = 1e-10
     col_w = 22  # column width for results
 
-    # Results
-    print("Roots found")
-    header = f"{'Func':>4}; " + "; ".join(f"{name:>{col_w}}" for name, _ in solvers)
-    print(header)
-    for p in all_problems:
-        line = f"{p.name:>4}; "
-        for name, solver in solvers:
-            cf = CountedFunc(p.f)
-            try:
-                result = solver(cf, p.a, p.b, p.value, eps)
-                line += f"{result:>{col_w}.15g}; "
-            except Exception:
-                if args.no_error_supression:
-                    raise
-                line += f"{'ERR':>{col_w}}; "
-        print(line)
-    print()
+    if enable_roots:
+        # Results
+        print("Roots found")
+        header = f"{'Func':>4}; " + "; ".join(f"{name:>{col_w}}" for name, _ in solvers)
+        print(header)
+        for p in all_problems:
+            line = f"{p.name:>4}; "
+            for name, solver in solvers:
+                cf = CountedFunc(p.f)
+                try:
+                    result = solver(cf, p.a, p.b, p.value, eps)
+                    line += f"{result:>{col_w}.15g}; "
+                except Exception:
+                    if args.no_error_supression:
+                        raise
+                    line += f"{'ERR':>{col_w}}; "
+            print(line)
+        print()
 
-    # Function values
-    print("Root difference")
-    header = f"{'Func':>4}; " + "; ".join(f"{name:>{col_w}}" for name, _ in solvers)
-    print(header)
-    for p in all_problems:
-        line = f"{p.name:>4}; "
-        for name, solver in solvers:
-            cf = CountedFunc(p.f)
-            try:
-                result = solver(cf, p.a, p.b, p.value, eps)
-                accuracy = abs(true_answers[p.name].root - result)
-                line += f"{accuracy:>{col_w}.15g}; "
-            except Exception:
-                if args.no_error_supression:
-                    raise
-                line += f"{'ERR':>{col_w}}; "
-        print(line)
-    print()
+    if enable_fval:
+        # Function values
+        print("Function values")
+        header = f"{'Func':>4}; " + "; ".join(f"{name:>{col_w}}" for name, _ in solvers)
+        print(header)
+        for p in all_problems:
+            line = f"{p.name:>4}; "
+            for name, solver in solvers:
+                cf = CountedFunc(p.f)
+                try:
+                    result = solver(cf, p.a, p.b, p.value, eps)
+                    true_answer = true_answers[p.name]
+                    func_val = p.f(result)
+                    if not true_answer.well_behaved:
+                        line += f"{'?':>{col_w}}; "
+                    else:
+                        line += f"{func_val:>{col_w}.15g}; "
+                except Exception:
+                    if args.no_error_supression:
+                        raise
+                    line += f"{'ERR':>{col_w}}; "
+            print(line)
+        print()
 
-    # Function evaluation counts
-    print("Function evaluations")
-    header = f"{'Func':>4}; " + "; ".join(f"{name:>6}" for name, _ in solvers)
-    print(header)
-    total = [0] * len(solvers)
-    for p in all_problems:
-        line = f"{p.name:>4}; "
-        for j, (name, solver) in enumerate(solvers):
-            cf = CountedFunc(p.f)
-            try:
-                solver(cf, p.a, p.b, p.value, eps)
-                total[j] += cf.count
-                line += f"{cf.count:>6}; "
-            except Exception:
-                if args.no_error_supression:
-                    raise
-                line += f"{'ERR':>6}; "
-        print(line)
+    if enable_acc:
+        # Root difference
+        print("Root difference")
+        header = f"{'Func':>4}; " + "; ".join(f"{name:>{col_w}}" for name, _ in solvers)
+        print(header)
+        for p in all_problems:
+            line = f"{p.name:>4}; "
+            for name, solver in solvers:
+                cf = CountedFunc(p.f)
+                try:
+                    result = solver(cf, p.a, p.b, p.value, eps)
+                    true_answer = true_answers[p.name]
+                    accuracy = abs(true_answer.root - result)
+                    if not true_answer.well_behaved:
+                        line += f"{'?':>{col_w}}; "
+                    else:
+                        line += f"{accuracy:>{col_w}.15g}; "
+                except Exception:
+                    if args.no_error_supression:
+                        raise
+                    line += f"{'ERR':>{col_w}}; "
+            print(line)
+        print()
 
-    # Print totals
-    line = f"{'SUM':>4}; "
-    for t in total:
-        line += f"{t:>6}; "
-    print(line)
-    print()
+    if enable_nfev:
+        # Function evaluation counts
+        print("Function evaluations")
+        header = f"{'Func':>4}; " + "; ".join(f"{name:>6}" for name, _ in solvers)
+        print(header)
+        total = [0] * len(solvers)
+        for p in all_problems:
+            line = f"{p.name:>4}; "
+            for j, (name, solver) in enumerate(solvers):
+                cf = CountedFunc(p.f)
+                try:
+                    solver(cf, p.a, p.b, p.value, eps)
+                    total[j] += cf.count
+                    line += f"{cf.count:>6}; "
+                except Exception:
+                    if args.no_error_supression:
+                        raise
+                    line += f"{'ERR':>6}; "
+            print(line)
+
+        # Print totals
+        line = f"{'SUM':>4}; "
+        for t in total:
+            line += f"{t:>6}; "
+        print(line)
+        print()
 
 def funcviz(args):
     func_name = args.func
     if func_name is None:
         raise Exception("--func is mandatory")
-    if args.func_x is None:
-        raise Exception("--func-x is mandatory")
+    func_x = args.func_x
+    if func_x is None:
+        func_x = true_answers[func_name].root
     for p in all_problems:
         if p.name == func_name:
             func = p.f
             break
     else:
         raise Exception(f"can't find func {func_name}")
-    if args.func_x == 0:
+    if func_x == 0:
         if args.func_size is None:
             start_x = -1e-10
             end_x = 1e-10
@@ -338,13 +469,13 @@ def funcviz(args):
             end_x = args.func_size
     else:
         if args.func_size is None:
-            size = args.func_x * 0.01
+            size = func_x * 0.01
         else:
             size = args.func_size
-        start_x = args.func_x - size / 2
-        end_x = args.func_x + size / 2
-    x = np.linspace(start_x, end_x, 101)
-    x = np.append(x, args.func_x)
+        start_x = func_x - size / 2
+        end_x = func_x + size / 2
+    x = np.linspace(start_x, end_x, 1001)
+    x = np.append(x, func_x)
     x.sort()
     y = np.array([func(float(xval)) for xval in x])
     plt.plot(x, y)
@@ -354,9 +485,16 @@ def funcviz(args):
 
 def main(args):
     if args.mode == "bench":
+        init_true_answers()
         bench(args)
     elif args.mode == "funcviz":
+        init_true_answers()
         funcviz(args)
+    elif args.mode == "termsearch":
+        init_true_answers()
+        termsearch(args)
+    elif args.mode == "showsolutions":
+        showsolutions(args)
     else:
         raise Exception("unknown --mode")
 
@@ -366,15 +504,23 @@ def parse_args():
     parser = argparse.ArgumentParser(
         prog="ModAB benchmark program"
     )
-    parser.add_argument(
-        "-s",
-        "--no-error-supression",
-        action="store_true"
-    )
 
     parser.add_argument(
         "--mode",
         default="bench",
+    )
+
+    parser.add_argument(
+        "--sections",
+        type=str,
+        default="roots,acc,nfev"
+    )
+
+    parser.add_argument(
+        "-s",
+        "--no-error-supression",
+        action="store_true",
+        help="don't suppress errors during bench",
     )
 
     parser.add_argument(
