@@ -23,25 +23,13 @@ def use_mpmath_internal(f):
     return inner
 
 
-def get_root_filted_by_bracket(f, x0, a, b):
-    try:
-        root = mpmath.findroot(f, x0)
-    except ValueError:
-        root = None
-    if root is not None and not (a <= root <= b):
-        # Root doesn't match bracket
-        root = None
-    return root
-
-
-def unscale(new_x, oldx1, oldx2, newx1, newx2):
-    # print("unscale args", oldx1, oldx2, newx1, newx2)
-    scale_fac = (newx2 - newx1) / (oldx2 - oldx1)
-    old_x = (new_x - newx1) / scale_fac  + oldx1
-    return old_x
-
-
-# old_x = (((x - oldx1) * scale_fac)) / scale_fac  + oldx1
+# Problems that actually have more than one root and are not unique
+multiroot_problem_list = [
+    "f42",
+    "f83",
+    "f84",
+    # "f89",
+]
 
 def approx_root(f, name, a, b):
     """Find the root of f using bisection."""
@@ -110,7 +98,9 @@ def mpmath_root(problem):
     # print("scipy root", root_approx)
     # print("f(root) = ", f_mpmath(root_approx))
     best_root = None
-    if abs(f_mpmath(root_mpmath)) < abs(f_mpmath(root_approx)):
+    # Prefer mpmath's roots - otherwise SciPy bisect gets an advantage
+    # simply because it computed the reference value. 
+    if abs(f_mpmath(root_mpmath)) + 1e-15 < abs(f_mpmath(root_approx)):
         root = root_mpmath
         root_source = 'scipy'
     else:
@@ -118,13 +108,52 @@ def mpmath_root(problem):
         root_source = 'mpmath'
 
     well_behaved = not not_zero_at_root
+    if problem.name in multiroot_problem_list:
+        well_behaved = False
 
     return KnownAnswer(
         problem=problem,
         root=root,
         well_behaved=well_behaved,
-        ambiguity_radius=0,
+        ambiguity_radius=find_ambiguity_radius(problem, root),
         root_source=root_source,
     )
 
+
+def sign(x):
+    return -1 if x < 0 else 1
+
+
+def find_ambiguity_radius(problem, root):
+    # print(problem.name, root)
+    probe_distance = 1e-15
+    iters_since_ambiguity = 0
+    increasing = None
+    max_ambiguity_radius = 1e-15
+    while probe_distance < 0.001:
+        if not (problem.a <= root - probe_distance < root + probe_distance <= problem.b):
+            # The problem isn't defined here
+            break
+        a = root - probe_distance
+        b = root + probe_distance
+        left_val = problem.f(a)
+        right_val = problem.f(b)
+        # print(f"f({a}) = {left_val} f({b}) = {right_val}")
+        if increasing is None and sign(right_val) != sign(left_val):
+            if left_val < 0:
+                increasing = True
+            else:
+                increasing = False
+        else:
+            # We already determined if the function is increasing or decreasing
+            if sign(right_val) == sign(left_val):
+                # print(f"left and right have same sign {probe_distance=}")
+                max_ambiguity_radius = probe_distance
+                iters_since_ambiguity = 0
+        probe_distance *= 2
+        iters_since_ambiguity += 1
+        if iters_since_ambiguity > 10:
+            # Haven't seen ambiguity in a long time
+            break
+    return max_ambiguity_radius
 
