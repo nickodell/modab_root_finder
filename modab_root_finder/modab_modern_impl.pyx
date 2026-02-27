@@ -58,8 +58,8 @@ cdef initialize(F, x1, x2, eps_f):
 
 
 cdef show_point_in_context(Node p1, Node p2, Node p3):
-    print(f"f({p3.x:.17f}) = {p3.y}")
-
+    scaled = (p3.x - p1.x) / (p2.x - p1.x)
+    print(f"f({scaled}) = {p3.y}")
 
 
 @cython.cdivision(True)
@@ -86,8 +86,8 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
         print("#" * 20)
         print(f"a={x1}, b={x2}")
     for i in range(1, maxiter + 1):
-        # if debug:
-        #     print(f"{i=} {side=} {bisection=}")
+        if debug:
+            print(f"\n" * 3)
         if bisection:
             p3 = Node()
             # if debug:
@@ -102,17 +102,17 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
             # symmetry factor
             r = (1 - abs(ym / (p1.y - p2.y)))
             k = r * r
-            if debug and i < 3:
+            if debug:
                 pass
                 # Note: if ym and p3.y have opposing signs, then this check
                 # will always fail.
-                # print(f"{k=}")
-                # print(f"expected y: {ym}")
-                # print(f"actual y: {p3.y}")
-                # print(f"check: {abs(ym - p3.y) < k * (abs(p3.y) + abs(ym))}")
-                # print(f"num: {abs(ym - p3.y)}")
-                # print(f"denom: {(abs(p3.y) + abs(ym))}")
-                # print(f"ratio: {abs(ym - p3.y) / (abs(p3.y) + abs(ym))} < {k}")
+                print(f"{k=}")
+                print(f"expected y: {ym}")
+                print(f"actual y: {p3.y}")
+                print(f"check: {abs(ym - p3.y) < k * (abs(p3.y) + abs(ym))}")
+                print(f"num: {abs(ym - p3.y)}")
+                print(f"denom: {(abs(p3.y) + abs(ym))}")
+                print(f"ratio: {abs(ym - p3.y) / (abs(p3.y) + abs(ym))} < {k}")
                 # print(f"{p1.y=} {p2.y=} {ym}")
                 # print(f"{p3.y=} {ym=}")
                 # print(f"{r=}")
@@ -162,7 +162,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
                 # Apply Anderson Bjork to left side
                 m = 1 - p3.y / p2.y
                 if m <= 0:
-                    p1.y /= 2
+                    p1.y /= 2.0
                 else:
                     p1.y *= m
             if not bisection:
