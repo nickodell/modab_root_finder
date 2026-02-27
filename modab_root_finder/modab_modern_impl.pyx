@@ -65,6 +65,10 @@ cdef show_point_in_context(Node p1, Node p2, Node p3):
 @cython.cdivision(True)
 cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000):
     cdef Node p1, p2, eps
+    if x1 > x2:
+        # Parts of this algorithm assume that x1 < x2.
+        # Not sure where.
+        x1, x2 = x2, x1
     p1, p2, eps = initialize(F, x1, x2, eps_f)
     # Are we bisecting right now?
     cdef bool bisection = True
