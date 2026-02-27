@@ -53,7 +53,7 @@ cdef initialize(F, x1, x2, eps_f):
     # First, precision here is absolute, not relative
     # Second, termination due to ftol is disabled
     eps.x = eps_f
-    eps.y = 0
+    eps.y = 0  # eps_f / 100
     return p1, p2, eps
 
 
@@ -140,7 +140,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
                 show_point_in_context(p1, p2, p3)
             threshold /= 2.0
 
-        if p3.y == 0 or abs(p3.x - x0) <= eps.x:
+        if abs(p3.y) <= eps.y or abs(p3.x - x0) <= eps.x:
             if debug:
                 print(f"exiting x converged, {p3}")
             return p3.x
