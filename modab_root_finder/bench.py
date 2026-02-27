@@ -30,29 +30,8 @@ from modab_root_finder.mpmath_root import (
 
 def modab_author(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
-    debug = bool(int(os.environ.get("MODAB_AUTHOR_DEBUG", "0")))
-    if debug:
-        history = []
-        def h(x):
-            nonlocal history
-            bisect = False
-            if len(history) >= 2:
-                history = history[-2:]
-                x1 = history[-1]
-                x2 = history[-2]
-                midpoint = (x1 + x2) / 2.0
-                if np.isclose(midpoint, x, rtol=1e-14, atol=0):
-                    bisect = True
-            history.append(x)
-
-            y = g(x)
-            print(f"f({x}) = {y}, bisect={bisect}")
-            return y
-    else:
-        h = g
-
     #return modab_from_paper(g, left, right, precision)
-    return modab_from_proektsoftbg_unwrapped(h, left, right, precision * 0.5)
+    return modab_from_proektsoftbg_unwrapped(g, left, right, precision)
 
 
 def modab_from_paper(f, left, right, target, precision=1e-14):
@@ -173,6 +152,7 @@ problems1 = [
     Problem("f24", lambda x: (x + 2) * (x + 1) * (x - 3)**3, 2.6, 4.6),
     Problem("f25", lambda x: (x - 4)**5 * math.log(x), 3.6, 5.6),
     Problem("f26", lambda x: (math.sin(x) - x / 4)**3, 2, 4),
+    # Problem("f26", lambda x: (math.sin(x) - x / 4)**3, 2.4744873046875 ,2.474609375),
     Problem("f27", lambda x: (81 - P(x) * (108 - P(x) * (54 - P(x) * (12 - P(x))))) * (1 if P(x) < 3 else (-1 if P(x) > 3 else 0)), 1, 3),
     Problem("f28", lambda x: math.sin((x - 7.143)**3), 7, 8),
     Problem("f29", lambda x: math.exp((x - 3)**5) - 1, 2.6, 4.6),

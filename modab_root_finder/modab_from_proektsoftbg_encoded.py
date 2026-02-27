@@ -1,9 +1,14 @@
 # License MIT
 # Copied from https://github.com/Proektsoftbg/Numerical/blob/main/Numerical-SciPy/ModAB.py
-# Note: The original file used an AI translation tool to translate from
+# Copyright note: The original file used an AI translation tool to translate from
 # C# into Python.
 
 import math
+import os
+
+
+debug = bool(int(os.environ.get("MODAB_AUTHOR_DEBUG", "0")))
+
 
 def mod_ab(f, left, right, target, precision=1e-14):
     """
@@ -26,6 +31,10 @@ def mod_ab(f, left, right, target, precision=1e-14):
         eps1 *= target
     else:
         eps1 = 0
+
+    if debug:
+        print("ModAB Author Start")
+        print("#" * 20)
         
     side = 0
     x0 = x1
@@ -34,19 +43,34 @@ def mod_ab(f, left, right, target, precision=1e-14):
     threshold = x2 - x1  # Threshold to fall back to bisection if AB fails to shrink the interval enough
     n = 100
     for i in range(1, n + 1):
+        # print(f"{x1=} {x2=}")
+        # if debug:
+        #     print(f"{i=} {side=} {bisection=}")
         if bisection:
             x3 = (x1 + x2) / 2.0
             y3 = f(x3) - target  # Function value at midpoint
+            if debug:
+                print(f"f({x3:.17f}) = {y3}")
             ym = (y1 + y2) / 2.0 # Ordinate of chord at midpoint
             r = 1 - abs(ym / (y2 - y1)) # Symmetry factor
             k = r * r # Deviation factor
             # Check if the function is close enough to linear
             if abs(ym - y3) < k * (abs(y3) + abs(ym)):
+                if debug:
+                    # print(f"{abs(ym / (y2 - y1))=}")
+                    print(f"{y1=} {y2=} {ym}")
+                    print(f"{y3=} {ym=}")
+                    print(f"{r=}")
+                    print(f"{k=}")
+                    print(f"check: {abs(ym - y3)=} < {k * (abs(y3) + abs(ym))=}")
+                    print("switched to false position")
                 bisection = False
                 threshold = (x2 - x1) * C
         else:
             x3 = (x1 * y2 - y1 * x2) / (y2 - y1)
             y3 = f(x3) - target
+            if debug:
+                print(f"f({x3}) = {y3}")
             threshold /= 2
 
         if abs(y3) <= eps1 or abs(x3 - x0) <= eps2:
@@ -72,9 +96,11 @@ def mod_ab(f, left, right, target, precision=1e-14):
                     y1 *= m
             elif not bisection:
                 side = -1
-            x2, y2 = x3, y3     
+            x2, y2 = x3, y3
 
         if x2 - x1 > threshold: # AB failed to shrink the interval enough
+            if not bisection and debug:
+                print("switched back back to bisection")
             bisection = True
             side = 0
 

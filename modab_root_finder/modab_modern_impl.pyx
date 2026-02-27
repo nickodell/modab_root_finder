@@ -58,7 +58,8 @@ cdef initialize(F, x1, x2, eps_f):
 
 
 cdef show_point_in_context(Node p1, Node p2, Node p3):
-    print(f"f({p3.x}) = {p3.y}")
+    print(f"f({p3.x:.17f}) = {p3.y}")
+
 
 
 @cython.cdivision(True)
@@ -77,16 +78,19 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
     cdef double ym, r
     cdef Node p3
     if debug:
+        print("ModAB Modern Start")
+        print("#" * 20)
         print(f"a={x1}, b={x2}")
     for i in range(1, maxiter + 1):
-        if debug:
-            print(f"{i=} {side=}")
+        # if debug:
+        #     print(f"{i=} {side=} {bisection=}")
         if bisection:
             p3 = Node()
-            if debug:
-                print(f"{p1=} {p2=}")
+            # if debug:
+            #     print(f"{p1=} {p2=}")
             p3.x = midpoint(p1, p2)
             p3.y = F(p3.x)
+
             if debug:
                 show_point_in_context(p1, p2, p3)
             ym = (p1.y + p2.y) / 2.0
@@ -94,16 +98,22 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
             # symmetry factor
             r = (1 - abs(ym / (p1.y - p2.y)))
             k = r * r
-            if debug:
+            if debug and i < 3:
+                pass
                 # Note: if ym and p3.y have opposing signs, then this check
                 # will always fail.
-                print(f"{k=}")
-                print(f"expected y: {ym}")
-                print(f"actual y: {p3.y}")
-                print(f"check: {abs(ym - p3.y) < k * (abs(p3.y) + abs(ym))}")
-                print(f"num: {abs(ym - p3.y)}")
-                print(f"denom: {(abs(p3.y) + abs(ym))}")
-                print(f"ratio: {abs(ym - p3.y) / (abs(p3.y) + abs(ym))} < {k}")
+                # print(f"{k=}")
+                # print(f"expected y: {ym}")
+                # print(f"actual y: {p3.y}")
+                # print(f"check: {abs(ym - p3.y) < k * (abs(p3.y) + abs(ym))}")
+                # print(f"num: {abs(ym - p3.y)}")
+                # print(f"denom: {(abs(p3.y) + abs(ym))}")
+                # print(f"ratio: {abs(ym - p3.y) / (abs(p3.y) + abs(ym))} < {k}")
+                # print(f"{p1.y=} {p2.y=} {ym}")
+                # print(f"{p3.y=} {ym=}")
+                # print(f"{r=}")
+                # print(f"{k=}")
+                # print(f"check: {abs(ym - p3.y)=} < {k * (abs(p3.y) + abs(ym))=}")
             if abs(ym - p3.y) < k * (abs(p3.y) + abs(ym)):
             # if debug:
             #     print(f"expected y: {ym}")
@@ -114,6 +124,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
 
                 if debug:
                     print("switching to false position")
+
                 bisection = False
                 # Update threshold for switching back to bisect
                 threshold = (p2.x - p1.x) * C
