@@ -3,18 +3,85 @@
 # Note: The original file used an AI translation tool to translate from
 # C# into Python.
 
-import base64
+import math
 
+def mod_ab(f, left, right, target, precision=1e-14):
+    """
+    Finds the root of f(x) = target within [left, right] using
+    modified Anderson-Björk method (Ganchovski, Traykov).
+    f(x) must be continuous and sign(f(left) - target) ≠ sign(f(right) - target).
+    """
+    x1, x2 = min(left, right), max(left, right)
+    y1 = f(x1) - target
+    if abs(y1) <= precision:
+        return x1
 
-# Note: this file is base64 encoded so that I don't accidentally look at it.
-s = """aW1wb3J0IG1hdGgKCmRlZiBtb2RfYWIoZiwgbGVmdCwgcmlnaHQsIHRhcmdldCwgcHJlY2lzaW9uPTFlLTE0KToKICAgICIiIgogICAgRmluZHMgdGhlIHJvb3Qgb2YgZih4KSA9IHRhcmdldCB3aXRoaW4gW2xlZnQsIHJpZ2h0XSB1c2luZwogICAgbW9kaWZpZWQgQW5kZXJzb24tQmrDtnJrIG1ldGhvZCAoR2FuY2hvdnNraSwgVHJheWtvdikuCiAgICBmKHgpIG11c3QgYmUgY29udGludW91cyBhbmQgc2lnbihmKGxlZnQpIC0gdGFyZ2V0KSDiiaAgc2lnbihmKHJpZ2h0KSAtIHRhcmdldCkuCiAgICAiIiIKICAgIHgxLCB4MiA9IG1pbihsZWZ0LCByaWdodCksIG1heChsZWZ0LCByaWdodCkKICAgIHkxID0gZih4MSkgLSB0YXJnZXQKICAgIGlmIGFicyh5MSkgPD0gcHJlY2lzaW9uOgogICAgICAgIHJldHVybiB4MQoKICAgIHkyID0gZih4MikgLSB0YXJnZXQKICAgIGlmIGFicyh5MikgPD0gcHJlY2lzaW9uOgogICAgICAgIHJldHVybiB4MgoKICAgIGVwczEgPSBwcmVjaXNpb24gLyAxMDAKICAgIGVwczIgPSBwcmVjaXNpb24gKiAoeDIgLSB4MSkgLyAyCiAgICBpZiBhYnModGFyZ2V0KSA+IDE6CiAgICAgICAgZXBzMSAqPSB0YXJnZXQKICAgIGVsc2U6CiAgICAgICAgZXBzMSA9IDAKICAgICAgICAKICAgIHNpZGUgPSAwCiAgICB4MCA9IHgxCiAgICBiaXNlY3Rpb24gPSBUcnVlCiAgICBDID0gMTYgIyBzYWZldGx5IGZhY3RvciBmb3IgdGhyZXNob2xkIGNvcnJlc3BvbmRpbmcgdG8gNCBpdGVyYXRpb25zID0gMl40CiAgICB0aHJlc2hvbGQgPSB4MiAtIHgxICAjIFRocmVzaG9sZCB0byBmYWxsIGJhY2sgdG8gYmlzZWN0aW9uIGlmIEFCIGZhaWxzIHRvIHNocmluayB0aGUgaW50ZXJ2YWwgZW5vdWdoCiAgICBuID0gMTAwCiAgICBmb3IgaSBpbiByYW5nZSgxLCBuICsgMSk6CiAgICAgICAgaWYgYmlzZWN0aW9uOgogICAgICAgICAgICB4MyA9ICh4MSArIHgyKSAvIDIuMAogICAgICAgICAgICB5MyA9IGYoeDMpIC0gdGFyZ2V0ICAjIEZ1bmN0aW9uIHZhbHVlIGF0IG1pZHBvaW50CiAgICAgICAgICAgIHltID0gKHkxICsgeTIpIC8gMi4wICMgT3JkaW5hdGUgb2YgY2hvcmQgYXQgbWlkcG9pbnQKICAgICAgICAgICAgciA9IDEgLSBhYnMoeW0gLyAoeTIgLSB5MSkpICMgU3ltbWV0cnkgZmFjdG9yCiAgICAgICAgICAgIGsgPSByICogciAjIERldmlhdGlvbiBmYWN0b3IKICAgICAgICAgICAgIyBDaGVjayBpZiB0aGUgZnVuY3Rpb24gaXMgY2xvc2UgZW5vdWdoIHRvIGxpbmVhcgogICAgICAgICAgICBpZiBhYnMoeW0gLSB5MykgPCBrICogKGFicyh5MykgKyBhYnMoeW0pKToKICAgICAgICAgICAgICAgIGJpc2VjdGlvbiA9IEZhbHNlCiAgICAgICAgICAgICAgICB0aHJlc2hvbGQgPSAoeDIgLSB4MSkgKiBDCiAgICAgICAgZWxzZToKICAgICAgICAgICAgeDMgPSAoeDEgKiB5MiAtIHkxICogeDIpIC8gKHkyIC0geTEpCiAgICAgICAgICAgIHkzID0gZih4MykgLSB0YXJnZXQKICAgICAgICAgICAgdGhyZXNob2xkIC89IDIKCiAgICAgICAgaWYgYWJzKHkzKSA8PSBlcHMxIG9yIGFicyh4MyAtIHgwKSA8PSBlcHMyOgogICAgICAgICAgICByZXR1cm4geDMKCiAgICAgICAgeDAgPSB4MwogICAgICAgIGlmIG1hdGguY29weXNpZ24oMSwgeTEpID09IG1hdGguY29weXNpZ24oMSwgeTMpOgogICAgICAgICAgICBpZiBzaWRlID09IDE6CiAgICAgICAgICAgICAgICBtID0gMSAtIHkzIC8geTEKICAgICAgICAgICAgICAgIGlmIG0gPD0gMDoKICAgICAgICAgICAgICAgICAgICB5MiAvPSAyCiAgICAgICAgICAgICAgICBlbHNlOgogICAgICAgICAgICAgICAgICAgIHkyICo9IG0KICAgICAgICAgICAgZWxpZiBub3QgYmlzZWN0aW9uOgogICAgICAgICAgICAgICAgc2lkZSA9IDEKICAgICAgICAgICAgeDEsIHkxID0geDMsIHkzCiAgICAgICAgZWxzZToKICAgICAgICAgICAgaWYgc2lkZSA9PSAtMToKICAgICAgICAgICAgICAgIG0gPSAxIC0geTMgLyB5MgogICAgICAgICAgICAgICAgaWYgbSA8PSAwOgogICAgICAgICAgICAgICAgICAgIHkxIC89IDIKICAgICAgICAgICAgICAgIGVsc2U6CiAgICAgICAgICAgICAgICAgICAgeTEgKj0gbQogICAgICAgICAgICBlbGlmIG5vdCBiaXNlY3Rpb246CiAgICAgICAgICAgICAgICBzaWRlID0gLTEKICAgICAgICAgICAgeDIsIHkyID0geDMsIHkzICAgICAKCiAgICAgICAgaWYgeDIgLSB4MSA+IHRocmVzaG9sZDogIyBBQiBmYWlsZWQgdG8gc2hyaW5rIHRoZSBpbnRlcnZhbCBlbm91Z2gKICAgICAgICAgICAgYmlzZWN0aW9uID0gVHJ1ZQogICAgICAgICAgICBzaWRlID0gMAoKICAgIHJldHVybiBmbG9hdCgnbmFuJyk="""
-code = base64.b64decode(s)
-code = code.decode('utf8')
-#print(code)
-exec(code)
-del code
-del s
+    y2 = f(x2) - target
+    if abs(y2) <= precision:
+        return x2
+
+    eps1 = precision / 100
+    eps2 = precision * (x2 - x1) / 2
+    if abs(target) > 1:
+        eps1 *= target
+    else:
+        eps1 = 0
+        
+    side = 0
+    x0 = x1
+    bisection = True
+    C = 16 # safetly factor for threshold corresponding to 4 iterations = 2^4
+    threshold = x2 - x1  # Threshold to fall back to bisection if AB fails to shrink the interval enough
+    n = 100
+    for i in range(1, n + 1):
+        if bisection:
+            x3 = (x1 + x2) / 2.0
+            y3 = f(x3) - target  # Function value at midpoint
+            ym = (y1 + y2) / 2.0 # Ordinate of chord at midpoint
+            r = 1 - abs(ym / (y2 - y1)) # Symmetry factor
+            k = r * r # Deviation factor
+            # Check if the function is close enough to linear
+            if abs(ym - y3) < k * (abs(y3) + abs(ym)):
+                bisection = False
+                threshold = (x2 - x1) * C
+        else:
+            x3 = (x1 * y2 - y1 * x2) / (y2 - y1)
+            y3 = f(x3) - target
+            threshold /= 2
+
+        if abs(y3) <= eps1 or abs(x3 - x0) <= eps2:
+            return x3
+
+        x0 = x3
+        if math.copysign(1, y1) == math.copysign(1, y3):
+            if side == 1:
+                m = 1 - y3 / y1
+                if m <= 0:
+                    y2 /= 2
+                else:
+                    y2 *= m
+            elif not bisection:
+                side = 1
+            x1, y1 = x3, y3
+        else:
+            if side == -1:
+                m = 1 - y3 / y2
+                if m <= 0:
+                    y1 /= 2
+                else:
+                    y1 *= m
+            elif not bisection:
+                side = -1
+            x2, y2 = x3, y3     
+
+        if x2 - x1 > threshold: # AB failed to shrink the interval enough
+            bisection = True
+            side = 0
+
+    return float('nan')
+
 
 def modab_from_proektsoftbg(f, left, right, target, precision=1e-14):
     # Execute the function that was created during exec()
     return mod_ab(f, left, right, target, precision)
+    
