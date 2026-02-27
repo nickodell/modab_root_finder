@@ -62,7 +62,7 @@ cdef show_point_in_context(Node p1, Node p2, Node p3):
 
 
 @cython.cdivision(True)
-cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=100):
+cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000):
     cdef Node p1, p2, eps
     p1, p2, eps = initialize(F, x1, x2, eps_f)
     # Are we bisecting right now?
@@ -94,9 +94,9 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=100):
             # symmetry factor
             r = (1 - abs(ym / (p1.y - p2.y)))
             k = r * r
-            # r = min(abs(p1.y), abs(p2.y)) / (max(abs(p1.y), abs(p2.y)))
-            # k = math.sqrt(math.sqrt(r))
             if debug:
+                # Note: if ym and p3.y have opposing signs, then this check
+                # will always fail.
                 print(f"{k=}")
                 print(f"expected y: {ym}")
                 print(f"actual y: {p3.y}")
@@ -105,6 +105,13 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=100):
                 print(f"denom: {(abs(p3.y) + abs(ym))}")
                 print(f"ratio: {abs(ym - p3.y) / (abs(p3.y) + abs(ym))} < {k}")
             if abs(ym - p3.y) < k * (abs(p3.y) + abs(ym)):
+            # if debug:
+            #     print(f"expected y: {ym}")
+            #     print(f"actual y: {p3.y}")
+            #     print(f"check: {abs(ym - p3.y) < k * abs(p1.y - p2.y)}")
+            #     print(f"ratio: {abs(ym - p3.y) / abs(p1.y - p2.y)} < {k}")
+            # if abs(ym - p3.y) < k * abs(p1.y - p2.y):
+
                 if debug:
                     print("switching to false position")
                 bisection = False
