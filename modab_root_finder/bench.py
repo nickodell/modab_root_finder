@@ -18,7 +18,7 @@ import functools
 
 from modab_root_finder import (
     modab_from_paper,
-    modab_from_proektsoftbg,
+    modab_from_proektsoftbg as modab_from_proektsoftbg_unwrapped,
 )
 from modab_root_finder.mpmath_root import (
     mpmath_root,
@@ -26,10 +26,10 @@ from modab_root_finder.mpmath_root import (
 )
 
 
-def mod_ab_author(f, left, right, target, precision=1e-14):
+def modab_author(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
     #return modab_from_paper(g, left, right, precision)
-    return modab_from_proektsoftbg(g, left, right, precision * 0.5)
+    return modab_from_proektsoftbg_unwrapped(g, left, right, precision * 0.5)
 
 
 # Function-call counting wrapper
@@ -216,8 +216,12 @@ problems3 = [
     Problem("f90", lambda x: x**3 - 2 * x**2 + x - 0.025, -1.0, 2.0),
     Problem("f91", lambda x: x * math.sin(1 / x) - 0.1 - 0.01, 0.01, 1.0),
 ]
+# Simple test functions
+problems4 = [
+    Problem("lin", lambda x: x - 0.5, 0.01, 1.0),
+]
 
-all_problems = problems1 + problems2 + problems3
+all_problems = problems1 + problems2 + problems3 + problems4
 
 # Solver table
 solvers = [
@@ -227,8 +231,8 @@ solvers = [
     ("ridder", scipy_ridder),
     ("chandr", scipy_chandrupatla),
     ("  toms", scipy_toms748),
-    (" modAB", mod_ab_author),
-    # (" paper", mod_ab_from_paper),
+    (" modAB", modab_author),
+    (" paper", modab_from_paper),
 ]
 
 
