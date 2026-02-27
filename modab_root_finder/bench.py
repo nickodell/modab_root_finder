@@ -6,6 +6,7 @@ import argparse
 import math
 from dataclasses import dataclass
 from typing import Callable
+import os
 
 import numpy as np
 import pandas as pd
@@ -17,8 +18,9 @@ import matplotlib.pyplot as plt
 import functools
 
 from modab_root_finder import (
-    modab_from_paper,
+    modab_from_paper as modab_from_paper_unwrapped,
     modab_from_proektsoftbg as modab_from_proektsoftbg_unwrapped,
+    modab_modern_impl as modab_modern_impl_unwrapped,
 )
 from modab_root_finder.mpmath_root import (
     mpmath_root,
@@ -28,8 +30,41 @@ from modab_root_finder.mpmath_root import (
 
 def modab_author(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
+    debug = bool(int(os.environ.get("MODAB_AUTHOR_DEBUG", "0")))
+    if debug:
+        history = []
+        def h(x):
+            nonlocal history
+            bisect = False
+            if len(history) >= 2:
+                history = history[-2:]
+                x1 = history[-1]
+                x2 = history[-2]
+                midpoint = (x1 + x2) / 2.0
+                if np.isclose(midpoint, x, rtol=1e-14, atol=0):
+                    bisect = True
+            history.append(x)
+
+            y = g(x)
+            print(f"f({x}) = {y}, bisect={bisect}")
+            return y
+    else:
+        h = g
+
     #return modab_from_paper(g, left, right, precision)
-    return modab_from_proektsoftbg_unwrapped(g, left, right, precision * 0.5)
+    return modab_from_proektsoftbg_unwrapped(h, left, right, precision * 0.5)
+
+
+def modab_from_paper(f, left, right, target, precision=1e-14):
+    g = (lambda x: f(x) - target) if target != 0 else f
+    #return modab_from_paper(g, left, right, precision)
+    return modab_from_paper_unwrapped(g, left, right, precision)
+
+
+def modab_modern_impl(f, left, right, target, precision=1e-14):
+    g = (lambda x: f(x) - target) if target != 0 else f
+    #return modab_from_paper(g, left, right, precision)
+    return modab_modern_impl_unwrapped(g, left, right, precision)
 
 
 # Function-call counting wrapper
@@ -226,13 +261,14 @@ all_problems = problems1 + problems2 + problems3 + problems4
 # Solver table
 solvers = [
     ("bisect", scipy_bisect),
-    ("brentq", scipy_brentq),
-    ("brenth", scipy_brenth),
+    # ("brentq", scipy_brentq),
+    # ("brenth", scipy_brenth),
     ("ridder", scipy_ridder),
     ("chandr", scipy_chandrupatla),
-    ("  toms", scipy_toms748),
+    # ("  toms", scipy_toms748),
     (" modAB", modab_author),
     (" paper", modab_from_paper),
+    ("modern", modab_modern_impl),
 ]
 
 
@@ -498,30 +534,22 @@ def funcviz(args):
     if func_name is None:
         raise Exception("--func is mandatory")
     func_x = args.func_x
-    if func_x is None:
-        func_x = true_answers[func_name].root
     for p in all_problems:
         if p.name == func_name:
             func = p.f
             break
     else:
         raise Exception(f"can't find func {func_name}")
-    if func_x == 0:
-        if args.func_size is None:
-            start_x = -1e-10
-            end_x = 1e-10
-        else:
-            start_x = -args.func_size
-            end_x = args.func_size
+    if func_x is None:
+        start_x = p.a
+        end_x = p.b
     else:
-        if args.func_size is None:
-            size = func_x * 0.01
-        else:
-            size = args.func_size
-        start_x = func_x - size / 2
-        end_x = func_x + size / 2
+        size = args.func_size
+        start_x = func_x - size
+        end_x = func_x + size
     x = np.linspace(start_x, end_x, 1001)
-    x = np.append(x, func_x)
+    if func_x is not None:
+        x = np.append(x, func_x)
     x.sort()
     y = np.array([func(float(xval)) for xval in x])
     plt.plot(x, y)
@@ -582,7 +610,8 @@ def parse_args():
     parser.add_argument(
         "--func-size",
         type=float,
-        help="for funcviz, what scale to visualize x on?"
+        help="for funcviz, what scale to visualize x on?",
+        default=1e-4,
     )
 
     parser.add_argument(
