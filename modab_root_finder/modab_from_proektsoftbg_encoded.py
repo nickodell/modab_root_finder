@@ -81,7 +81,7 @@ def mod_ab(f, left, right, target, precision=1e-14):
     return float('nan')
 
 
-def modab_from_proektsoftbg(f, left, right, target, precision=1e-14):
+def modab_from_proektsoftbg(f, left, right, precision=1e-14):
     # Execute the function that was created during exec()
-    return mod_ab(f, left, right, target, precision)
+    return mod_ab(f, left, right, 0, precision)
     
