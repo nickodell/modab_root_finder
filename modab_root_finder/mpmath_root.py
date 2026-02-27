@@ -31,6 +31,21 @@ multiroot_problem_list = [
     # "f89",
 ]
 
+
+def find_nearby_root(f, x0, max_search_area):
+    """Using SciPy bisection, find a nearby root."""
+    assert not np.isnan(x0), "x0 must not be NaN"
+    search_area = 1e-10
+    while search_area < max_search_area:
+        a = x0 - search_area
+        b = x0 + search_area
+        if sign(f(a)) != sign(f(b)):
+            _, results = scipy.optimize.bisect(f, a, b, full_output=True, rtol=1e-15, xtol=1e-15)
+            return results
+        search_area *= 2
+    raise Exception(f"Could not find root for {f=} near {x0=}")
+
+
 def approx_root(f, name, a, b):
     """Find the root of f using bisection."""
     # print("in approx_root")

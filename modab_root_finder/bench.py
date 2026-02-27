@@ -14,11 +14,15 @@ from scipy.optimize import brenth, brentq, elementwise
 from scipy.optimize import ridder as sp_ridder
 from scipy.optimize import toms748 as sp_toms748
 import matplotlib.pyplot as plt
+import functools
 
 from modab_root_finder import (
     modab_from_paper,
     modab_from_proektsoftbg,
+)
+from modab_root_finder.mpmath_root import (
     mpmath_root,
+    find_nearby_root,
 )
 
 
@@ -215,8 +219,6 @@ problems3 = [
 
 all_problems = problems1 + problems2 + problems3
 
-problem_lookup = {p.name: p for p in all_problems}
-
 # Solver table
 solvers = [
     ("bisect", scipy_bisect),
@@ -248,20 +250,13 @@ def sign(x):
     return -1 if x < 0 else 1
 
 
-def find_nearby_root(f, x0):
-    search_area = 1e-10
-    for i in range(10):
-        a = x0 - search_area
-        b = x0 + search_area
-        if sign(f(a)) != sign(f(b)):
-            _, results = sp_bisect(f, a, b, full_output=True, xtol=1e-15)
-            return results
-        search_area *= 2
-    raise Exception()
+class BadSolutionException(Exception):
+    pass
 
 
-
-def check_solution(f, p, root, eps):
+def check_solution(f, p, root, eps, scale_x):
+    if np.isnan(root):
+        raise BadSolutionException("root is nan")
     true_answer = true_answers[p.name]
     # Note: some of the benchmark problems have a large area where
     # f(x) == 0. Add the 'ambiguity radius' to eps to make those
@@ -275,40 +270,45 @@ def check_solution(f, p, root, eps):
         # This root is small enough
         return
 
-    results = find_nearby_root(f, root)
+    results = find_nearby_root(f, root, 1e-7 * scale_x)
     if results.converged:
         if f(results.root) < eps:
             # How different is it from our root?
             x_err = abs(results.root - root)
             print(f"solver's root off, {x_err=}, f({root}) = {froot}")
             if x_err > eps:
-                raise Exception("Found bad solution")
+                raise BadSolutionException("Found bad solution")
             else:
                 return
     else:
-        raise Exception("bisection didn't converge")
+        raise Exception("bisection didn't converge, can't check solution")
 
 
 def termsearch(args):
-    # eps_vals = [1e-14, 1e-12, 1e-10, 1e-8]
     eps_vals = [1e-8, 1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14]
-    for problem in all_problems:
+    problems = all_problems
+    if args.func is not None:
+        # filter function list
+        problems = [p for p in problems if p.name == args.func]
+    for problem in problems:
         for eps in eps_vals:
+            # If we make the problems 2x wider, make eps 2x wider
+            # too.
+            eps *= args.scale_x
             for solver_name, solver in solvers:
                 print("solver", solver_name, "problem", problem.name, "eps", eps)
                 cf = CountedFunc(problem.f)
                 root = solver(cf, problem.a, problem.b, problem.value, eps)
-                check_solution(problem.f, problem, root, eps)
+                check_solution(problem.f, problem, root, eps, args.scale_x)
 
 
 def showsolutions(args):
-    global all_problems
+    problems = all_problems
     if args.func is not None:
         # filter function list
-        all_problems = [p for p in all_problems if p.name == args.func]
-    init_true_answers()    
+        problems = [p for p in problems if p.name == args.func]
     df_rows = []
-    for problem in all_problems:
+    for problem in problems:
         problem_name = problem.name
         answer = true_answers[problem_name]
         digits_right = int(-math.log10(max(abs(problem.f(answer.root)), 1e-15)))
@@ -325,6 +325,48 @@ def showsolutions(args):
     print(df.to_string())
     print("done")
 
+
+def scale_problems(args):
+    global all_problems, true_answers
+    scale_x = args.scale_x
+    scale_y = args.scale_y
+    def get_name(name):
+        # if scale_x != 1:
+        #     name += f"_x{scale_x}"
+        # if scale_y != 1:
+        #     name += f"_y{scale_y}"
+        return name
+
+    new_all_problems = []
+    for problem in all_problems:
+        name = get_name(problem.name)
+        # Note: this lambda makes use of a loop variable.
+        # Pass it in kwargs to avoid issues here
+
+        @functools.wraps(problem.f)
+        def new_func(x, f=problem.f):
+            new_x = x / scale_x
+            y = f(new_x) * scale_y
+            return y
+        new_problem = Problem(
+            name=name,
+            f=new_func,
+            a=problem.a * scale_x,
+            b=problem.b * scale_x,
+            value=problem.value,
+        )
+        new_all_problems.append(new_problem)
+    all_problems = new_all_problems
+
+    # If we scaled x, that also means that the location of the
+    # root, and problem name changed too
+    new_true_answers = {}
+    for problem_name, true_answer in true_answers.items():
+        true_answer.root *= scale_x
+        true_answer.ambiguity_radius *= scale_x
+        true_answer.name = get_name(problem_name)
+        new_true_answers[true_answer.name] = true_answer
+    true_answers = new_true_answers
 
 
 # Benchmark runner
@@ -350,7 +392,7 @@ def bench(args):
     if "fval" in sections:
         enable_fval = True
 
-    eps = 1e-10
+    eps = 1e-14 * args.scale_x
     col_w = 22  # column width for results
 
     if enable_roots:
@@ -484,14 +526,13 @@ def funcviz(args):
 
 
 def main(args):
+    init_true_answers()
+    scale_problems(args)
     if args.mode == "bench":
-        init_true_answers()
         bench(args)
     elif args.mode == "funcviz":
-        init_true_answers()
         funcviz(args)
     elif args.mode == "termsearch":
-        init_true_answers()
         termsearch(args)
     elif args.mode == "showsolutions":
         showsolutions(args)
@@ -538,6 +579,25 @@ def parse_args():
         "--func-size",
         type=float,
         help="for funcviz, what scale to visualize x on?"
+    )
+
+    parser.add_argument(
+        "--scale-x",
+        type=float,
+        help=(
+            "Scale the range of all benchmark functions by this factor. "
+            "Theoretically this should only scale the answer to the root "
+            "finding problem, but some solvers are affected by numerical "
+            "issues."
+        ),
+        default=1,
+    )
+
+    parser.add_argument(
+        "--scale-y",
+        type=float,
+        help="Scale the output of all benchmark functions by this factor.",
+        default=1,
     )
 
     args = parser.parse_args()

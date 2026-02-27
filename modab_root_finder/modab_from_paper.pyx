@@ -2,14 +2,18 @@ import cython
 
 from scipy.optimize import bisect
 import math
+import numpy as np
 
 
 cdef sign(x):
+    # TODO: C# Math.Sign actually can return -1, 0, or 1.
+    # Do we want to deal with sign = 0?
     return -1 if x < 0 else 1
 
+Precision = np.finfo(float).eps
 
 @cython.cdivision(True)
-cpdef mod_ab_from_paper(F, x1, x2, eps):
+cpdef modab_from_paper(F, x1, x2, eps, maxiter=100):
     cdef float y1, y2, y3
     cdef float x3
     cdef float ym
@@ -31,8 +35,8 @@ cpdef mod_ab_from_paper(F, x1, x2, eps):
         else:
             raise NotImplementedError()
         # L24
-        print("y3", y3, "y0", F(x0))
-        # Note: using 2 * eps from GH thread
+        # print("y3", y3, "y0", F(x0))
+        # Note: use 2 * eps from GH thread
         if y3 == 0 or abs(x3 - x0) <= 2 * eps:   # Convergence check
             # TODO: Convergence check is done before we know if
             # x3 / x0 is valid bracket
