@@ -123,6 +123,21 @@ class Problem:
 def P(x):
     return x + 1.11111
 
+def abcissa_tt(x):
+    vals = np.array([
+        (-2.0, -1e15 - 1),
+        (0.0, -1.0),
+        (1, 1.0),
+        (2.0, 1e15 - 1),
+    ])
+    xp = vals[:, 0]
+    fp = vals[:, 1]
+    return np.interp(x, xp, fp)
+
+def tan_tt(x):
+    x = x * (math.pi / 2 - 1e-15)
+    return math.tan(x) - 1
+
 # Test problems
 problems1 = [
     # Sérgio Galdino. A family of regula falsi root-finding methods
@@ -234,6 +249,7 @@ problems3 = [
 # Simple test functions
 problems4 = [
     Problem("lin", lambda x: x - 0.5, 0.01, 1.0),
+    Problem("tan_tt", tan_tt, -1, 1),
 ]
 
 all_problems = problems1 + problems2 + problems3 + problems4
