@@ -10,7 +10,7 @@ import os
 debug = bool(int(os.environ.get("MODAB_AUTHOR_DEBUG", "0")))
 
 
-def mod_ab(f, left, right, target, precision=1e-14):
+def mod_ab(f, left, right, target, precision, maxiter):
     """
     Finds the root of f(x) = target within [left, right] using
     modified Anderson-Björk method (Ganchovski, Traykov).
@@ -42,7 +42,7 @@ def mod_ab(f, left, right, target, precision=1e-14):
     C = 16 # safetly factor for threshold corresponding to 4 iterations = 2^4
     threshold = x2 - x1  # Threshold to fall back to bisection if AB fails to shrink the interval enough
     n = 100
-    for i in range(1, n + 1):
+    for i in range(1, maxiter + 1):
         # print(f"{x1=} {x2=}")
         # if debug:
         #     print(f"{i=} {side=} {bisection=}")
@@ -107,7 +107,7 @@ def mod_ab(f, left, right, target, precision=1e-14):
     return float('nan')
 
 
-def modab_from_proektsoftbg(f, left, right, precision=1e-14):
+def modab_from_proektsoftbg(f, left, right, precision=1e-14, maxiter=100):
     # Execute the function that was created during exec()
-    return mod_ab(f, left, right, 0, precision)
+    return mod_ab(f, left, right, 0, precision, maxiter)
     
