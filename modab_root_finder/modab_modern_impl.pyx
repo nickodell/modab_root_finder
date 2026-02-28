@@ -1,6 +1,5 @@
 # This implementation is based upon the C# code from 
-# the paper "Modified Anderson-Bjork’s method for
-# solving non-linear equations in structural mechanics"
+# "modab_modern_impl.cs"
 
 import cython
 import os
