@@ -7,7 +7,7 @@ description = "spin modab-root-finder"
 
 dependencies = [
   "numpy>=2.0.0",
-  "scipy",
+  "scipy>=1.16.0",
 ]
 
 [build-system]
