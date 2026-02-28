@@ -149,6 +149,10 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
         if sign(p1.y) == sign(p3.y):
             if side == 1:
                 # Apply Anderson Bjork to right side
+                # m must be smaller than 1: p3.y and p1.y have the same
+                # sign, so p3.y / p1.y must be positive.
+                # m could be smaller than 0 if p3 was a worse guess
+                # than p1.
                 m = 1 - p3.y / p1.y
                 if m <= 0:
                     p2.y /= 2.0
