@@ -50,7 +50,7 @@ def mod_ab(f, left, right, target, precision, maxiter):
             x3 = (x1 + x2) / 2.0
             y3 = f(x3) - target  # Function value at midpoint
             if debug:
-                print(f"f({x3:.17f}) = {y3}")
+                print(f"f({(x3 - x1) / (x2 - x1):.17f}) = {y3}")
             ym = (y1 + y2) / 2.0 # Ordinate of chord at midpoint
             r = 1 - abs(ym / (y2 - y1)) # Symmetry factor
             k = r * r # Deviation factor
@@ -70,7 +70,7 @@ def mod_ab(f, left, right, target, precision, maxiter):
             x3 = (x1 * y2 - y1 * x2) / (y2 - y1)
             y3 = f(x3) - target
             if debug:
-                print(f"f({x3}) = {y3}")
+                print(f"f({(x3 - x1) / (x2 - x1):.17f}) = {y3}")
             threshold /= 2
 
         if abs(y3) <= eps1 or abs(x3 - x0) <= eps2:
