@@ -139,6 +139,9 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
                 show_point_in_context(p1, p2, p3)
             threshold /= 2.0
 
+        if debug:
+            print(f"{abs(p3.y) <= eps.y=} or {abs(p3.x - x0) <= eps.x=}")
+            print(f"{abs(p3.y)=} <= {eps.y=} or {abs(p3.x - x0)=} <= {eps.x=}")
         if abs(p3.y) <= eps.y or abs(p3.x - x0) <= eps.x:
             if debug:
                 print(f"exiting x converged, {p3}")
