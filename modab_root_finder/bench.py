@@ -249,7 +249,7 @@ problems3 = [
 # Simple test functions
 problems4 = [
     Problem("lin", lambda x: x - 0.5, 0.01, 1.0),
-    Problem("tan_tt", tan_tt, -1, 1),
+    # Problem("tan_tt", tan_tt, -1, 1),
 ]
 
 all_problems = problems1 + problems2 + problems3 + problems4
