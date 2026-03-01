@@ -302,7 +302,7 @@ def check_solution(f, p, root, eps, scale_x):
     if not true_answer.well_behaved:
         return
     froot = f(root)
-    if froot <= eps:
+    if abs(froot) <= eps:
         # This root is small enough
         return
 
