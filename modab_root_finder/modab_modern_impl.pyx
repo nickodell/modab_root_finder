@@ -179,9 +179,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
             # success here. Use p3, which is the most recently
             # evaluated point.
             return p3.x
-        # bug here? Can p2.x - p1.x be negative?
-        # Yes, if bracket was specified that way at beginning.
-        if abs(p2.x - p1.x) > threshold:
+        if p2.x - p1.x > threshold:
             if debug and not bisection:
                 print("switching back to bisection")
             bisection = True
