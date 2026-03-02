@@ -5,7 +5,8 @@ import cython
 import os
 import math
 
-debug = bool(int(os.environ.get('MODAB_MOD_DEBUG', '0')))
+cdef bint debug = bool(int(os.environ.get('MODAB_MOD_DEBUG', '0')))
+cdef bint enable_prev_x_check = False
 
 
 cdef double sign(double x):
@@ -142,7 +143,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
         if debug:
             print(f"{abs(p3.y) <= eps.y=} or {abs(p3.x - x0) <= eps.x=}")
             print(f"{abs(p3.y)=} <= {eps.y=} or {abs(p3.x - x0)=} <= {eps.x=}")
-        if abs(p3.y) <= eps.y or abs(p3.x - x0) <= eps.x:
+        if abs(p3.y) <= eps.y or (abs(p3.x - x0) <= eps.x and enable_prev_x_check):
             if debug:
                 print(f"exiting x converged, {p3}")
             return p3.x
