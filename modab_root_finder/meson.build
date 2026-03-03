@@ -47,5 +47,4 @@ py.install_sources(
   subdir: 'modab_root_finder'
 )
 
-install_subdir('submodule', install_dir: py.get_install_dir() / 'modab_root_finder')
 install_subdir('tests', install_dir: py.get_install_dir() / 'modab_root_finder')
