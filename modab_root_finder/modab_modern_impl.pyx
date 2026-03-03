@@ -143,7 +143,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
             print(f"{abs(p3.y) <= eps.y=} or {abs(p3.x - x0) <= eps.x=}")
             print(f"{abs(p3.y)=} <= {eps.y=} or {abs(p3.x - x0)=} <= {eps.x=}")
         # if abs(p3.y) <= eps.y or abs(p3.x - x0) <= eps.x:
-        if abs(p3.y) <= eps.y or p2.x - p1.x <= 2*eps.x: #Stabilized check to handle pathological cases
+        if abs(p3.y) <= eps.y or p2.x - p1.x <= 2*eps.x: # Stabilized check to handle pathological cases
             if debug:
                 print(f"exiting x converged, {p3}")
             return p3.x
@@ -175,11 +175,12 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
             if not bisection:
                 side = -1
             p2 = p3
-        if abs(p1.x - p2.x) < eps.x:
+        # Remove this check here as redundand
+        # if abs(p1.x - p2.x) < eps.x:
             # If the bracket p1, p2 is small enough, return
             # success here. Use p3, which is the most recently
             # evaluated point.
-            return p3.x
+            # return p3.x
         if p2.x - p1.x > threshold:
             if debug and not bisection:
                 print("switching back to bisection")
