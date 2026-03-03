@@ -25,6 +25,16 @@ py.extension_module(
   subdir: 'modab_root_finder'
 )
 
+py.extension_module(
+  'modab_refactor',
+  'modab_refactor.pyx',
+  dependencies: py_dep,
+  override_options : ['cython_language=cpp'],
+  install: true,
+  include_directories: [],
+  subdir: 'modab_root_finder'
+)
+
 python_sources = [
   '__init__.py',
   'conftest.py',
