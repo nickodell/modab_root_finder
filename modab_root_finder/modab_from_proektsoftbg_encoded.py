@@ -8,6 +8,7 @@ import os
 
 
 debug = bool(int(os.environ.get("MODAB_AUTHOR_DEBUG", "0")))
+enable_prev_x_check = False
 
 
 def mod_ab(f, left, right, target, precision, maxiter):
@@ -73,7 +74,8 @@ def mod_ab(f, left, right, target, precision, maxiter):
                 print(f"f({(x3 - x1) / (x2 - x1):.17f}) = {y3}")
             threshold /= 2
 
-        if abs(y3) <= eps1 or abs(x3 - x0) <= eps2:
+        # Check convergence
+        if abs(y3) <= eps1 or (abs(x3 - x0) <= eps2 and enable_prev_x_check):
             return x3
 
         x0 = x3
@@ -97,6 +99,11 @@ def mod_ab(f, left, right, target, precision, maxiter):
             elif not bisection:
                 side = -1
             x2, y2 = x3, y3
+        if abs(x1 - x2) < eps2:
+            # If the bracket x1, x2 is small enough, return
+            # success here. Use x3, which is the most recently
+            # evaluated point.
+            return x3
 
         if x2 - x1 > threshold: # AB failed to shrink the interval enough
             if not bisection and debug:
