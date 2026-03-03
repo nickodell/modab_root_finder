@@ -142,7 +142,8 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
         if debug:
             print(f"{abs(p3.y) <= eps.y=} or {abs(p3.x - x0) <= eps.x=}")
             print(f"{abs(p3.y)=} <= {eps.y=} or {abs(p3.x - x0)=} <= {eps.x=}")
-        if abs(p3.y) <= eps.y or abs(p3.x - x0) <= eps.x:
+        # if abs(p3.y) <= eps.y or abs(p3.x - x0) <= eps.x:
+        if abs(p3.y) <= eps.y or p2.x - p1.x <= 2*eps.x: #Stabilized check to handle pathological cases
             if debug:
                 print(f"exiting x converged, {p3}")
             return p3.x
