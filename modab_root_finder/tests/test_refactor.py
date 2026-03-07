@@ -7,69 +7,51 @@ from modab_root_finder.modab_refactor import (
 )
 import numpy as np
 from numpy.testing import assert_allclose
-from functools import wraps
-
-
-# Source - https://stackoverflow.com/a/14620633
-# Posted by Kimvais, modified by community. See post 'Timeline' for change history
-# Retrieved 2026-03-02, License - CC BY-SA 4.0
-
-class AttrDict(dict):
-    def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
-        self.__dict__ = self
+from modab_root_finder.tests.util import debug_func
+import copy
 
 
 def make_bisect_state(args, x1, x2):
-    return SolverState(dict(
-        bisect=True,
-        x1=x1,
-        x2=x2,
-        y1=args.func(x1),
-        y2=args.func(x2),
-        func_calls=2,
-        x3_prev=x1,
-        terminate=False,
-    ))
+    state = SolverState()
+    state.x1 = x1
+    state.x2 = x2
+    state.y1 = args.func(x1)
+    state.y2 = args.func(x2)
+
+    return state
 
 
 def make_bisect_args(func):
-    return SolverArgs(dict(
-        xtol=1e-14,
-        rtol=0,
-        ftol=0,
-        func=func,
-    ))
-
-
-def debug_func(func):
-    @wraps(func)
-    def inner(x):
-        y = func(x)
-        print(f"f({x}) = {y}")
-        return y
-    return inner
+    args = SolverArgs()
+    args.func = func
+    return args
 
 
 def assert_state_preconditions(state):
-    state = AttrDict(state.asdict())
-    assert state.x1 < state.x2
+    assert state.x1 < state.x2, "Bracket in wrong order"
     assert sign(state.y1) == -1 * sign(state.y2)
 
 
-def assert_state_postconditions(state):
-    state = AttrDict(state.asdict())
-    assert state.x1 < state.x2
-    assert sign(state.y1) == -1 * sign(state.y2)
+def assert_state_postconditions(state, prev_state):
+    # Check that we made progress
+    prev_bracket_size = abs(prev_state.x2 - prev_state.x1)
+    bracket_size = abs(state.x2 - state.x1)
+    assert bracket_size < prev_bracket_size
+    # This is here to check the validity of our postconditions.
+    # Specifically, we need to make sure that our postconditions are not less restrictive than
+    # our preconditions in the next loop.
+    assert_state_preconditions(state)
 
 
 def test_bisect1():
     @debug_func
     def f(x):
-        print("x")
         return x + 1
     args = make_bisect_args(f)
     state = make_bisect_state(args, -5, 5)
     assert_state_preconditions(state)
+    # prev_state = state.copy()
+    prev_state = copy.copy(state)
+    print(prev_state.x1)
     modab_single(state, args)
-    assert_state_postconditions(state)
+    assert_state_postconditions(state, prev_state)

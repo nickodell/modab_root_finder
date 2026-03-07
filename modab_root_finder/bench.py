@@ -21,6 +21,7 @@ from modab_root_finder import (
     modab_from_paper as modab_from_paper_unwrapped,
     modab_from_proektsoftbg as modab_from_proektsoftbg_unwrapped,
     modab_modern_impl as modab_modern_impl_unwrapped,
+    root_scalar,
 )
 from modab_root_finder.mpmath_root import (
     mpmath_root,
@@ -44,6 +45,12 @@ def modab_modern_impl(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
     #return modab_from_paper(g, left, right, precision)
     return modab_modern_impl_unwrapped(g, left, right, precision)
+
+
+def modab_refactor(f, left, right, target, precision=1e-14):
+    g = (lambda x: f(x) - target) if target != 0 else f
+    return root_scalar(g, bracket=[left, right], xtol=precision, method='modab_refactor')
+
 
 
 # Function-call counting wrapper
@@ -266,6 +273,7 @@ solvers = [
     (" modAB", modab_author),
     (" paper", modab_from_paper),
     ("modern", modab_modern_impl),
+    ("refact", modab_refactor),
 ]
 
 
