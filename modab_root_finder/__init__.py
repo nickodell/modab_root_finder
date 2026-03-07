@@ -23,7 +23,7 @@ def root_scalar(
     maxiter=100, options=None,
 ):
     if method is None:
-        method = "modern"
+        method = 'modab_modern'
     if bracket is None:
         raise ValueError("A bracket is required for this method.")
     if fprime is not None:
