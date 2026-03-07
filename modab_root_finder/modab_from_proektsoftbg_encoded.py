@@ -68,7 +68,24 @@ def mod_ab(f, left, right, target, precision, maxiter):
                 bisection = False
                 threshold = (x2 - x1) * C
         else:
-            x3 = (x1 * y2 - y1 * x2) / (y2 - y1)
+            dirty = True
+            while dirty:
+                if debug:
+                    print(f"secant {x1=} {x2=} {x3=}")
+                dirty = False
+                if x2 == x3:
+                    y1 *= 0.5
+                    assert abs(y1) > 0
+                    dirty = True
+                if x1 == x3:
+                    y2 *= 0.5
+                    dirty = True
+                    assert abs(y2) > 0
+                x3 = (x1 * y2 - y1 * x2) / (y2 - y1)
+                if debug and dirty:
+                    print("tried updating x3")
+            assert x3 != x1
+            assert x3 != x2
             y3 = f(x3) - target
             if debug:
                 print(f"f({(x3 - x1) / (x2 - x1):.17f}) = {y3}")
