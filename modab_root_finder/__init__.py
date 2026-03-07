@@ -43,7 +43,7 @@ def root_scalar(
     if len(bracket) != 2:
         raise ValueError("bracket must have 2 elements")
     if method not in methods:
-        raise ValueError(f"method {method} not found. Options are {method.keys()}")
+        raise ValueError(f"method {method} not found. Options are {methods.keys()}")
 
     method_func = methods[method]
     lo, hi = bracket
