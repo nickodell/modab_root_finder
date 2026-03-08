@@ -49,3 +49,13 @@ def root_scalar(
     lo, hi = bracket
     root = method_func(f, lo, hi, xtol, maxiter)
     return root
+
+
+class InvalidSolverInput(Exception):
+    """A user function returned NaN or inf."""
+    pass
+
+
+class InternalSolverError(Exception):
+    """Something went wrong inside solver."""
+    pass

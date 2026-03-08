@@ -2,7 +2,8 @@
 
 import cython
 import os
-from libc.math cimport isnan, NAN
+import modab_root_finder
+from libc.math cimport isnan, isinf, NAN, nextafter
 
 
 cdef bint debug = bool(int(os.environ.get('MODAB_REFACTOR_DEBUG', '0')))
@@ -15,6 +16,24 @@ cpdef double sign(double x):
 
 cpdef double midpoint(double x1, double x2):
     return (x1 + x2) / 2.0
+
+
+cdef class FuncWrapper:
+    cdef object inner
+
+    def __init__(self, object inner):
+        self.inner = inner
+
+    cdef double call(self, double x):
+        if isnan(x) or isinf(x):
+            raise modab_root_finder.InternalSolverError()
+        cdef double val = self.inner(x)
+        if isnan(val) or isinf(val):
+            raise modab_root_finder.InvalidSolverInput()
+        return val
+
+    def __call__(self, double x):
+        return self.call(x)
 
 
 @cython.final
@@ -30,6 +49,7 @@ cdef class SolverArgs:
         self.rtol = 0
         self.ftol = 0
         self.func = None
+        self.maxiter = 0
 
     @property
     def xtol(self):
@@ -39,8 +59,21 @@ cdef class SolverArgs:
     def xtol(self, value):
         self.xtol = value
 
-    # rtol
-    # ftol
+    @property
+    def rtol(self):
+        return self.rtol
+
+    @rtol.setter
+    def rtol(self, value):
+        self.rtol = value
+
+    @property
+    def ftol(self):
+        return self.ftol
+
+    @ftol.setter
+    def ftol(self, value):
+        self.ftol = value
 
     @property
     def func(self):
@@ -121,6 +154,14 @@ cdef class SolverState:
         self.y2 = value
 
     @property
+    def y3(self):
+        return self.y3
+
+    @y3.setter
+    def y3(self, value):
+        self.y3 = value
+
+    @property
     def x3_prev(self):
         return self.x3_prev
 
@@ -160,6 +201,14 @@ cdef class SolverState:
     def side(self, value):
         self.side = value
 
+    @property
+    def bisect(self):
+        return self.bisect
+
+    @bisect.setter
+    def bisect(self, value):
+        self.bisect = value
+
 
 cpdef tuple initialize(object func, double x1, double x2, double eps_f, int maxiter):
     state = SolverState()
@@ -167,7 +216,7 @@ cpdef tuple initialize(object func, double x1, double x2, double eps_f, int maxi
     args.xtol = eps_f
     args.rtol = 0
     args.ftol = 0
-    args.func = func
+    args.func = FuncWrapper(func)
     args.maxiter = maxiter
 
     if x1 > x2:
@@ -182,20 +231,43 @@ cpdef tuple initialize(object func, double x1, double x2, double eps_f, int maxi
     return state, args
 
 
+cdef show_point_in_context(SolverState state):
+    cdef double scaled = (state.x3 - state.x1) / (state.x2 - state.x1)
+    print(f"f_rel({scaled}) = {state.y3}")
+
+
+cdef double clamp(double x, double lo, double hi):
+    if debug:
+        print(lo, hi)
+    assert lo < hi
+    if lo <= x <= hi:
+        # x is in range
+        return x
+    elif isnan(x):
+        return (lo + hi) / 2
+    elif x < lo:
+        return lo
+    elif x > hi:
+        return hi
+    raise ValueError("This code shouldn't be reachable; this is a bug")
+
+
 cpdef double modab_single(SolverState state, SolverArgs args):
     # How long should we try AB before giving up and doing bisection?
     # This setting allows AB to make no progress for 4 iterations before
     # giving up.
     cdef double C = 16
     cdef double ym, r
+    cdef double tmp
     if debug:
         print(f"\n" * 3)
+        print(f"x1={state.x1} x2={state.x2}")
+        print(f"f(x1)={state.y1} f(x2)={state.y2}")
     if state.bisect:
-        if debug:
-            print(f"x1={state.x1} x2={state.x2}")
-            print(f"f(x1)={state.y1} f(x2)={state.y2}")
         state.x3 = (state.x1 + state.x2) / 2.0
         state.y3 = args.func(state.x3)
+        if debug:
+            show_point_in_context(state)
 
         ym = (state.y1 + state.y2) / 2.0
         # r is in range [0, 1]
@@ -233,8 +305,14 @@ cpdef double modab_single(SolverState state, SolverArgs args):
             # Update threshold for switching back to bisect
             state.threshold = (state.x2 - state.x1) * C
     else:
-        state.x3 = (state.x1 * state.y2 - state.y1 * state.x2) / (state.y2 - state.y1)
+        if debug:
+            print("secant")
+        tmp = (state.x1 * state.y2 - state.y1 * state.x2) / (state.y2 - state.y1)
+        state.x3 = clamp(tmp, nextafter(state.x1, state.x2), nextafter(state.x2, state.x1))
+
         state.y3 = args.func(state.x3)
+        if debug:
+            show_point_in_context(state)
         state.threshold /= 2.0
 
     if debug:
@@ -242,6 +320,8 @@ cpdef double modab_single(SolverState state, SolverArgs args):
         print(f"{abs(state.y3)=} <= {args.ftol=} or {abs(state.x3 - state.x3_prev)=} <= {args.xtol=}")
     if abs(state.y3) <= args.ftol or (abs(state.x3 - state.x3_prev) <= args.xtol and enable_prev_x_check):
         state.terminate = True
+        if debug:
+            print("terminating due to small y3")
         return state.x3
     state.x3_prev = state.x3  # Keep track of last approximation
 
@@ -277,10 +357,12 @@ cpdef double modab_single(SolverState state, SolverArgs args):
         state.y2 = state.y3
     if debug:
         print("bracket size", abs(state.x1 - state.x2), "xtol", args.xtol)
-    if abs(state.x1 - state.x2) < args.xtol:
+    if abs(state.x1 - state.x2) <= args.xtol:
         # If the bracket p1, p2 is small enough, return
         # success here. Use p3, which is the most recently
         # evaluated point.
+        if debug:
+            print("terminating due to small bracket")
         state.terminate = True
         return state.x3
     if state.x2 - state.x1 > state.threshold:
