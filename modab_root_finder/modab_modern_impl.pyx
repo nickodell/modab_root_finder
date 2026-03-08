@@ -37,12 +37,14 @@ cdef double midpoint(Node p1, Node p2):
 
 cdef double secant(Node p1, Node p2):
     x3 = (p1.x * p2.y - p1.y * p2.x) / (p2.y - p1.y)
-    # Clamp x3 between x1 and x2. If the function is very flat and p2.y is close p1.y, floating point rounding errors can shoot x3 outside the bracketing interval
-    if x3 < x1:
-        return x1
-    elif x3 > x2:
-        return x2
+    # Clamp x3 between x1 and x2. If the function is very flat and p2.y is close to
+    # p1.y, floating point rounding errors can shoot x3 outside the bracketing interval
+    if x3 < p1.x:
+        return p1.x
+    elif x3 > p2.x:
+        return p2.x
     return x3
+
 
 cdef tuple initialize(F, double x1, double x2, double eps_f):
     p1 = Node()
