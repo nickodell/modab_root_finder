@@ -4,6 +4,7 @@
 import cython
 import os
 import math
+from libc.math cimport isnan, NAN
 
 cdef bint debug = bool(int(os.environ.get('MODAB_MOD_DEBUG', '0')))
 cdef bint enable_prev_x_check = False
@@ -36,7 +37,16 @@ cdef double midpoint(Node p1, Node p2):
 
 
 cdef double secant(Node p1, Node p2):
-    return (p1.x * p2.y - p1.y * p2.x) / (p2.y - p1.y)
+    x3 = (p1.x * p2.y - p1.y * p2.x) / (p2.y - p1.y)
+    # Clamp x3 between x1 and x2. If the function is very flat and p2.y is close to
+    # p1.y, floating point rounding errors can shoot x3 outside the bracketing interval
+    if x3 < p1.x:
+        return p1.x
+    elif x3 > p2.x:
+        return p2.x
+    elif isnan(x3):
+        return p1.x
+    return x3
 
 
 cdef tuple initialize(F, double x1, double x2, double eps_f):
@@ -187,3 +197,18 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
             side = 0
 
     raise Exception("failed to converge!")
+
+
+# Testing wrappers
+def _secant(double x1, double y1, double x2, double y2):
+    p1 = Node()
+    p1.x = x1
+    p1.y = y1
+    p2 = Node()
+    p2.x = x2
+    p2.y = y2
+    return secant(p1, p2)
+
+
+def _sign(double x):
+    return sign(x)
