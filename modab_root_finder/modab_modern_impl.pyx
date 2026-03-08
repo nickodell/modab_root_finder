@@ -4,6 +4,7 @@
 import cython
 import os
 import math
+from libc.math cimport isnan, NAN
 
 cdef bint debug = bool(int(os.environ.get('MODAB_MOD_DEBUG', '0')))
 cdef bint enable_prev_x_check = False
@@ -43,6 +44,8 @@ cdef double secant(Node p1, Node p2):
         return p1.x
     elif x3 > p2.x:
         return p2.x
+    elif isnan(x3):
+        return p1.x
     return x3
 
 
