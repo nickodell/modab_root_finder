@@ -197,3 +197,18 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
             side = 0
 
     raise Exception("failed to converge!")
+
+
+# Testing wrappers
+def _secant(double x1, double y1, double x2, double y2):
+    p1 = Node()
+    p1.x = x1
+    p1.y = y1
+    p2 = Node()
+    p2.x = x2
+    p2.y = y2
+    return secant(p1, p2)
+
+
+def _sign(double x):
+    return sign(x)
