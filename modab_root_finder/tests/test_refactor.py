@@ -1,5 +1,5 @@
 from modab_root_finder import root_scalar
-from modab_root_finder.modab_refactor import (
+from modab_root_finder.step_introspect import (
     sign,
     SolverState,
     SolverArgs,

@@ -1,13 +1,6 @@
 py.extension_module(
-  '_core',
-  'coremodule.c',
-  install: true,
-  subdir: 'modab_root_finder'
-)
-
-py.extension_module(
-  'modab_from_paper',
-  'modab_from_paper.pyx',
+  'original_paper',
+  'original_paper.pyx',
   dependencies: py_dep,
   override_options : ['cython_language=cpp'],
   install: true,
@@ -16,8 +9,8 @@ py.extension_module(
 )
 
 py.extension_module(
-  'modab_modern_impl',
-  'modab_modern_impl.pyx',
+  'modern',
+  'modern.pyx',
   dependencies: py_dep,
   override_options : ['cython_language=cpp'],
   install: true,
@@ -26,8 +19,8 @@ py.extension_module(
 )
 
 py.extension_module(
-  'modab_refactor',
-  'modab_refactor.pyx',
+  'step_introspect',
+  'step_introspect.pyx',
   dependencies: py_dep,
   override_options : ['cython_language=cpp'],
   install: true,
@@ -37,8 +30,7 @@ py.extension_module(
 
 python_sources = [
   '__init__.py',
-  'conftest.py',
-  'modab_from_proektsoftbg_encoded.py',
+  'modab_from_proektsoftbg.py',
   'mpmath_root.py',
 ]
 

@@ -18,9 +18,6 @@ import matplotlib.pyplot as plt
 import functools
 
 from modab_root_finder import (
-    modab_from_paper as modab_from_paper_unwrapped,
-    modab_from_proektsoftbg as modab_from_proektsoftbg_unwrapped,
-    modab_modern_impl as modab_modern_impl_unwrapped,
     root_scalar,
 )
 from modab_root_finder.mpmath_root import (
@@ -32,19 +29,18 @@ from modab_root_finder.mpmath_root import (
 def modab_author(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
     #return modab_from_paper(g, left, right, precision)
-    return modab_from_proektsoftbg_unwrapped(g, left, right, precision)
+    return root_scalar(g, bracket=[left, right], xtol=precision, method='modab_author')
 
 
 def modab_from_paper(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
-    #return modab_from_paper(g, left, right, precision)
-    return modab_from_paper_unwrapped(g, left, right, precision)
+    return root_scalar(g, bracket=[left, right], xtol=precision, method='modab_paper')
 
 
 def modab_modern_impl(f, left, right, target, precision=1e-14):
     g = (lambda x: f(x) - target) if target != 0 else f
     #return modab_from_paper(g, left, right, precision)
-    return modab_modern_impl_unwrapped(g, left, right, precision)
+    return root_scalar(g, bracket=[left, right], xtol=precision, method='modab_modern')
 
 
 def modab_refactor(f, left, right, target, precision=1e-14):

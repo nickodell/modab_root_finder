@@ -10,7 +10,7 @@ from modab_root_finder.tests.test_refactor import (
 from modab_root_finder.tests.util import (
     debug_func
 )
-from modab_root_finder.modab_refactor import (
+from modab_root_finder.step_introspect import (
     modab_single,
     sign,
 )

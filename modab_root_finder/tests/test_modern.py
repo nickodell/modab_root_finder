@@ -1,5 +1,5 @@
 from modab_root_finder import root_scalar
-from modab_root_finder.modab_modern_impl import (
+from modab_root_finder.modern import (
     _secant,
     _sign,
 )
