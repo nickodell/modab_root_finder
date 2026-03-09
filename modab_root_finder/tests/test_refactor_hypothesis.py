@@ -31,8 +31,8 @@ min_rtol = eps * 4
     bisect=st.booleans(),
     # Note: supplying a value near 0 for y1 or y2 can result in underflow,
     # which changes the sign of y1 or y2. TODO: figure out if this is a bug.
-    y1=st.floats(max_value=-eps),
-    y2=st.floats(min_value=eps),
+    y1=st.floats(max_value=-eps, allow_infinity=False),
+    y2=st.floats(min_value=eps, allow_infinity=False),
     y3=st.floats(),
     xtol=st.sampled_from([1e-14, 1e-10, 1e-8, 1]),
 )

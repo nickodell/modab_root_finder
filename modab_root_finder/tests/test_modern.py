@@ -14,12 +14,6 @@ def test_secant():
     assert_allclose(actual, expected)
 
 
-def test_secant_zerodiv():
-    with pytest.raises(ZeroDivisionError):
-        actual = _secant(x1=-1, y1=0, x2=1, y2=0)
-
-
-
 def test_secant_overflow():
     # https://github.com/nickodell/modab_root_finder/pull/2
     x1 = 0.0
@@ -30,7 +24,7 @@ def test_secant_overflow():
         x2=x2,
         y2=1e+300,
     )
-    assert x1 <= x3 <= x2
+    assert x1 < x3 < x2
 
 
 @given(

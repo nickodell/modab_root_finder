@@ -64,7 +64,6 @@ def assert_state_postconditions(state, args, prev_state):
 
 
 def test_bisect1():
-    @debug_func
     def f(x):
         return x + 1
     args = make_bisect_args(f)

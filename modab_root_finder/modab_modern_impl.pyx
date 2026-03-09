@@ -1,85 +1,72 @@
+# cython: boundscheck=False, wraparound=False, cdivision=True
+
 # This implementation is based upon the C# code from 
 # "modab_modern_impl.cs"
 
 import cython
 import os
 import math
-from libc.math cimport isnan, NAN
+import modab_root_finder
+from libc.math cimport isnan, isinf, NAN, nextafter
 
 cdef bint debug = bool(int(os.environ.get('MODAB_MOD_DEBUG', '0')))
-cdef bint enable_prev_x_check = False
 
 
-cdef double sign(double x):
+cdef double sign(double x) noexcept:
     # TODO: C# Math.Sign actually can return -1, 0, or 1.
     # Do we want to deal with sign = 0?
     return -1.0 if x < 0.0 else 1.0
 
 
-@cython.final
-cdef class SolverState:
-    pass
-
-
-@cython.final
-cdef class Node:
-    cdef double x
-    cdef double y
-    def __str__(self):
-        return f"N({self.x=}, {self.y=})"
-    def __repr__(self):
-        return f"N({self.x=}, {self.y=})"
-
-
-cdef double midpoint(Node p1, Node p2):
+cdef double midpoint(double x1, double x2) noexcept:
     # Take the average between p1 X and p2 X
-    return (p1.x + p2.x) / 2.0
+    return (x1 + x2) / 2.0
 
 
-cdef double secant(Node p1, Node p2):
-    x3 = (p1.x * p2.y - p1.y * p2.x) / (p2.y - p1.y)
-    # Clamp x3 between x1 and x2. If the function is very flat and p2.y is close to
-    # p1.y, floating point rounding errors can shoot x3 outside the bracketing interval
-    if x3 < p1.x:
-        return p1.x
-    elif x3 > p2.x:
-        return p2.x
-    elif isnan(x3):
-        return p1.x
+cdef double secant(double x1, double y1, double x2, double y2) noexcept:
+    cdef double x3 = (x1 * y2 - y1 * x2) / (y2 - y1)
+    x3 = clamp(x1, x2, x3)
     return x3
 
 
-cdef tuple initialize(F, double x1, double x2, double eps_f):
-    p1 = Node()
-    p1.x = x1
-    p1.y = F(x1)
-    p2 = Node()
-    p2.x = x2
-    p2.y = F(x2)
-    if sign(p1.y) == sign(p2.y):
-        raise Exception("bad starting bracket")
-    eps = Node()
-    # Note: deviate from Solver.cs in two ways.
-    # First, precision here is absolute, not relative
-    # Second, termination due to ftol is disabled
-    eps.x = eps_f
-    eps.y = 0  # eps_f / 100
-    return p1, p2, eps
+cdef double clamp(double x1, double x2, double x3) noexcept:
+    # Clamp x3 between x1 and x2. If the function is very flat and y2 is close to
+    # y1, floating point rounding errors can shoot x3 outside the bracketing interval
+
+    cdef double x1_shrink = nextafter(x1, x2)
+    cdef double x2_shrink = nextafter(x2, x1)
+    if x3 < x1_shrink:
+        return x1_shrink
+    elif x3 > x2_shrink:
+        return x2_shrink
+    elif isnan(x3):
+        return x1
+    return x3
 
 
-cdef show_point_in_context(Node p1, Node p2, Node p3):
-    scaled = (p3.x - p1.x) / (p2.x - p1.x)
-    print(f"f({scaled}) = {p3.y}")
+cdef show_point_in_context(double x1, double x2, double x3, double y3):
+    scaled = (x3 - x1) / (x2 - x1)
+    print(f"f({scaled}) = {y3}")
 
 
-@cython.cdivision(True)
+cdef double checked_call(object func, double x):
+    if isnan(x) or isinf(x):
+        raise modab_root_finder.InternalSolverError()
+    cdef double val = func(x)
+    if isnan(val) or isinf(val):
+        raise modab_root_finder.InvalidSolverInput()
+    return val
+
+
 cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000):
-    cdef Node p1, p2, eps
+    cdef double y1, y2, y3
+    cdef double ftol = 0.0
     if x1 > x2:
         # Parts of this algorithm assume that x1 < x2.
         # Not sure where.
         x1, x2 = x2, x1
-    p1, p2, eps = initialize(F, x1, x2, eps_f)
+    y1 = checked_call(F, x1)
+    y2 = checked_call(F, x2)
     # Are we bisecting right now?
     cdef bint bisection = True
     # What side moved last in AB step?
@@ -88,109 +75,80 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
     # This setting allows AB to make no progress for 4 iterations before
     # giving up.
     cdef double C = 16
-    cdef double x0 = p1.x
+    cdef double x0 = x1
     cdef double ym, r
-    cdef Node p3
     if debug:
         print("ModAB Modern Start")
         print("#" * 20)
         print(f"a={x1}, b={x2}")
     for i in range(1, maxiter + 1):
-        if debug:
-            print(f"\n" * 3)
         if bisection:
-            p3 = Node()
-            # if debug:
-            #     print(f"{p1=} {p2=}")
-            p3.x = midpoint(p1, p2)
-            p3.y = F(p3.x)
+            x3 = midpoint(x1, x2)
+            y3 = checked_call(F, x3)
 
             if debug:
-                show_point_in_context(p1, p2, p3)
-            ym = (p1.y + p2.y) / 2.0
+                show_point_in_context(x1, x2, x3, y3)
+            ym = (y1 + y2) / 2.0
             # r is in range [0, 1]
             # symmetry factor
-            r = (1 - abs(ym / (p1.y - p2.y)))
+            r = (1 - abs(ym / (y1 - y2)))
             k = r * r
-            if debug:
-                pass
-                # Note: if ym and p3.y have opposing signs, then this check
-                # will always fail.
-                print(f"{k=}")
-                print(f"expected y: {ym}")
-                print(f"actual y: {p3.y}")
-                print(f"check: {abs(ym - p3.y) < k * (abs(p3.y) + abs(ym))}")
-                print(f"num: {abs(ym - p3.y)}")
-                print(f"denom: {(abs(p3.y) + abs(ym))}")
-                print(f"ratio: {abs(ym - p3.y) / (abs(p3.y) + abs(ym))} < {k}")
-                # print(f"{p1.y=} {p2.y=} {ym}")
-                # print(f"{p3.y=} {ym=}")
-                # print(f"{r=}")
-                # print(f"{k=}")
-                # print(f"check: {abs(ym - p3.y)=} < {k * (abs(p3.y) + abs(ym))=}")
-            if abs(ym - p3.y) < k * (abs(p3.y) + abs(ym)):
-            # if debug:
-            #     print(f"expected y: {ym}")
-            #     print(f"actual y: {p3.y}")
-            #     print(f"check: {abs(ym - p3.y) < k * abs(p1.y - p2.y)}")
-            #     print(f"ratio: {abs(ym - p3.y) / abs(p1.y - p2.y)} < {k}")
-            # if abs(ym - p3.y) < k * abs(p1.y - p2.y):
-
+            # Note: if ym and y3 have opposing signs, then this check
+            # will always fail.
+            if abs(ym - y3) < k * (abs(y3) + abs(ym)):
                 if debug:
                     print("switching to false position")
 
                 bisection = False
                 # Update threshold for switching back to bisect
-                threshold = (p2.x - p1.x) * C
+                threshold = (x2 - x1) * C
         else:
-            p3 = Node()
-            p3.x = secant(p1, p2)
-            p3.y = F(p3.x)
+            x3 = secant(x1, y1, x2, y2)
+            y3 = checked_call(F, x3)
             if debug:
-                show_point_in_context(p1, p2, p3)
+                show_point_in_context(x1, x2, x3, y3)
             threshold /= 2.0
 
-        if debug:
-            print(f"{abs(p3.y) <= eps.y=} or {abs(p3.x - x0) <= eps.x=}")
-            print(f"{abs(p3.y)=} <= {eps.y=} or {abs(p3.x - x0)=} <= {eps.x=}")
-        if abs(p3.y) <= eps.y or (abs(p3.x - x0) <= eps.x and enable_prev_x_check):
+        if abs(y3) <= ftol:
             if debug:
-                print(f"exiting x converged, {p3}")
-            return p3.x
-        x0 = p3.x  # Keep track of last approximation
+                print(f"exiting x converged, {x3=} {y3=}")
+            return x3
+        x0 = x3  # Keep track of last approximation
 
-        if sign(p1.y) == sign(p3.y):
+        if sign(y1) == sign(y3):
             if side == 1:
                 # Apply Anderson Bjork to right side
-                # m must be smaller than 1: p3.y and p1.y have the same
-                # sign, so p3.y / p1.y must be positive.
+                # m must be smaller than 1: y3 and y1 have the same
+                # sign, so y3 / y1 must be positive.
                 # m could be smaller than 0 if p3 was a worse guess
                 # than p1.
-                m = 1 - p3.y / p1.y
+                m = 1 - y3 / y1
                 if m <= 0:
-                    p2.y /= 2.0
+                    y2 /= 2.0
                 else:
-                    p2.y *= m
+                    y2 *= m
             if not bisection:
                 side = 1
-            p1 = p3
+            x1 = x3
+            y1 = y3
         else:
             if side == -1:
                 # Apply Anderson Bjork to left side
-                m = 1 - p3.y / p2.y
+                m = 1 - y3 / y2
                 if m <= 0:
-                    p1.y /= 2.0
+                    y1 /= 2.0
                 else:
-                    p1.y *= m
+                    y1 *= m
             if not bisection:
                 side = -1
-            p2 = p3
-        if abs(p1.x - p2.x) < eps.x:
+            x2 = x3
+            y2 = y3
+        if abs(x1 - x2) < eps_f:
             # If the bracket p1, p2 is small enough, return
             # success here. Use p3, which is the most recently
             # evaluated point.
-            return p3.x
-        if p2.x - p1.x > threshold:
+            return x3
+        if x2 - x1 > threshold:
             if debug and not bisection:
                 print("switching back to bisection")
             bisection = True
@@ -201,13 +159,7 @@ cpdef modab_modern_impl(F, double x1, double x2, double eps_f, int maxiter=1000)
 
 # Testing wrappers
 def _secant(double x1, double y1, double x2, double y2):
-    p1 = Node()
-    p1.x = x1
-    p1.y = y1
-    p2 = Node()
-    p2.x = x2
-    p2.y = y2
-    return secant(p1, p2)
+    return secant(x1, y1, x2, y2)
 
 
 def _sign(double x):
